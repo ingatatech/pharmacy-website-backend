@@ -1,6 +1,15 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
+import { User } from "./entities/User";
+import { Category } from "./entities/Category";
+import { Service } from "./entities/Service";
+import { Product } from "./entities/Product";
+import { Article } from "./entities/Article";
+import { Faq } from "./entities/Faq";
+import { PharmacyLocation } from "./entities/PharmacyLocation";
+import { ContactInquiry } from "./entities/ContactInquiry";
+import { RefillRequest } from "./entities/RefillRequest";
 
 dotenv.config();
 
@@ -13,7 +22,17 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME,
   synchronize: process.env.NODE_ENV !== "production",
   logging: false,
-  entities: [__dirname + "/entities/**/*.{ts,js}"],
+  entities: [
+    User,
+    Category,
+    Service,
+    Product,
+    Article,
+    Faq,
+    PharmacyLocation,
+    ContactInquiry,
+    RefillRequest,
+  ],
   migrations: [],
   subscribers: [],
 });
