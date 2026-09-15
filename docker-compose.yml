@@ -28,6 +28,8 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: ingata_pharmacy
+      # Placeholder only — replace with a long random string for any real deployment.
+      JWT_SECRET: change-this-in-production-use-a-long-random-string
     ports:
       - "4000:4000"
     depends_on:

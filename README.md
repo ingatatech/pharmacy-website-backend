@@ -1,10 +1,10 @@
 # Ingata Pharmacy
 
-Full-stack pharmacy management application. Backend is a Node.js/Express/TypeORM API on PostgreSQL; frontend is a Next.js (App Router) app styled with Tailwind CSS.
+Full-stack pharmacy management application. Backend is a Node.js/Express/TypeORM API on PostgreSQL with JWT authentication and role-based authorization; frontend is a Next.js (App Router) app styled with Tailwind CSS.
 
 ## Stack
 
-- **Backend:** Node.js, Express, TypeScript, TypeORM, PostgreSQL
+- **Backend:** Node.js, Express, TypeScript, TypeORM, PostgreSQL, JWT auth, Swagger/OpenAPI docs
 - **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS
 - **Infra:** Docker, Docker Compose, GitHub Actions
 
@@ -12,11 +12,74 @@ Full-stack pharmacy management application. Backend is a Node.js/Express/TypeORM
 
 ```
 ingata-pharmacy/
-├── backend/    # Express API + TypeORM
-├── frontend/   # Next.js app
+├── backend/
+│   └── src/
+│       ├── entities/       # TypeORM entities
+│       ├── routes/         # Express route handlers
+│       ├── middleware/     # auth, role-checking, rate limiting
+│       ├── utils/          # JWT signing/verification
+│       ├── data-source.ts  # TypeORM + Postgres connection
+│       ├── swagger.ts      # OpenAPI spec config
+│       ├── seed-admin.ts   # one-time admin user seed script
+│       └── index.ts        # Express app entry point
+├── frontend/
+│   └── src/app/             # Next.js App Router pages
 ├── docker-compose.yml
 └── .github/workflows/ci.yml
 ```
+
+## Data model
+
+| Entity | Purpose |
+|---|---|
+| `User` | Admin / pharmacist-reviewer accounts (email, bcrypt password hash, role) |
+| `Category` | Shared category taxonomy for services and products |
+| `Service` | Pharmacy services (e.g. prescription refills, vaccinations) |
+| `Product` | Catalog items (medications, OTC products) |
+| `Article` | Editorial content with a draft → review → publish workflow |
+| `Faq` | Published FAQ entries |
+| `PharmacyLocation` | Branch locations, opening hours, offered services |
+| `ContactInquiry` | Submissions from the public contact form |
+| `RefillRequest` | Submissions from the public prescription refill form |
+
+## API overview
+
+Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "try it out" console) is served at **`http://localhost:4000/api-docs`** once the backend is running.
+
+| Resource | Public routes | Admin-only routes |
+|---|---|---|
+| `/auth` | `POST /login` | `GET /me` (any authenticated user) |
+| `/services` | `GET /`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/products` | `GET /`, `GET /search?q=`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/faqs` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/locations` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/articles` | `GET /`, `GET /:slug` (published only) | `GET /admin/all`, `POST /`, `PATCH /:id`, plus the workflow actions below |
+| `/contact` | `POST /` (rate limited) | — |
+| `/prescription-refill` | `POST /` (rate limited) | — |
+
+**Article review workflow** (`/api/articles/:id/...`):
+
+```
+draft --submit-for-review--> pending_review --approve--> approved --publish--> published
+                                    |
+                                  reject
+                                    v
+                                  draft
+```
+
+- `submit-for-review` and `publish` require the **admin** role.
+- `approve` and `reject` require the **pharmacist_reviewer** role — by design, an admin alone cannot approve or reject an article.
+
+## Authentication & authorization
+
+- Login via `POST /api/auth/login` with `{ email, password }` returns a JWT (8-hour expiry) and the user's public profile.
+- Send the token on protected routes as `Authorization: Bearer <token>`.
+- Two roles exist: `admin` and `pharmacist_reviewer`. Admin write routes require `admin`; article approve/reject require `pharmacist_reviewer`.
+- Missing/invalid token → `401 { error: "Authentication required" }`. Wrong role → `403 { error: "You do not have permission to perform this action" }`.
+
+## Rate limiting
+
+The public `POST /api/contact` and `POST /api/prescription-refill` endpoints are limited to **5 requests per 15 minutes per IP**. Exceeding the limit returns `429 { error: "Too many requests. Please try again later." }`.
 
 ## Run locally with Docker Compose
 
@@ -28,25 +91,35 @@ docker compose up --build
 
 This starts three services:
 
-- `postgres` — PostgreSQL 16, data persisted in the `postgres_data` volume
-- `backend` — Express API at http://localhost:4000
+- `postgres` — PostgreSQL 16 on host port `5435`, data persisted in the `postgres_data` volume
+- `backend` — Express API at http://localhost:4000 (docs at `/api-docs`)
 - `frontend` — Next.js app at http://localhost:3000
 
 Check the API is up: `curl http://localhost:4000/api/health`
+
+> The backend's `JWT_SECRET` in `docker-compose.yml` is a placeholder. Replace it with a long random string before deploying anywhere real.
 
 To stop: `docker compose down` (add `-v` to also remove the Postgres volume).
 
 ## Run locally without Docker (development)
 
-Requires a local PostgreSQL instance.
+Requires a local PostgreSQL instance (or run just the `postgres` service from Docker Compose: `docker compose up -d postgres`, exposed on host port `5435`).
 
 ### Backend
 
 ```bash
 cd backend
-cp .env.example .env   # edit DB_* values to match your local Postgres
+cp .env.example .env   # edit DB_* to match your Postgres, and set a real JWT_SECRET
 npm install
 npm run dev             # http://localhost:4000
+```
+
+Generate a `JWT_SECRET` for local dev with: `openssl rand -hex 64` (or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
+
+Create a test admin account (reads `admin@ingata.com` / `changeme123` by default — override with `npm run seed:admin -- <email> <password> <fullName>`):
+
+```bash
+npm run seed:admin
 ```
 
 Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
@@ -61,3 +134,20 @@ npm run dev             # http://localhost:3000
 ```
 
 Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
+
+## Environment variables
+
+**`backend/.env`** (see `backend/.env.example`):
+
+| Variable | Purpose |
+|---|---|
+| `NODE_ENV` | `development` disables TypeORM's schema sync in `production` |
+| `PORT` | Backend HTTP port (default `4000`) |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL connection |
+| `JWT_SECRET` | Signing secret for auth tokens — must be set, no default |
+
+**`frontend/.env.local`** (see `frontend/.env.local.example`):
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Base URL the frontend calls for the backend API |
