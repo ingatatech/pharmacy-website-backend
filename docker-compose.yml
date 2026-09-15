@@ -18,7 +18,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
     restart: unless-stopped
     environment:
       NODE_ENV: production
