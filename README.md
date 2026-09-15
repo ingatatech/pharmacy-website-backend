@@ -1,17 +1,16 @@
-# Ingata Pharmacy
+# Ingata Pharmacy — Backend
 
-Full-stack pharmacy management application. Backend is a Node.js/Express/TypeORM API on PostgreSQL with JWT authentication and role-based authorization; frontend is a Next.js (App Router) app styled with Tailwind CSS.
+Node.js/Express/TypeORM API on PostgreSQL with JWT authentication and role-based authorization, for the Ingata Pharmacy application. The frontend lives in the separate [pharmacy-website-frontend](https://github.com/ingatatech/pharmacy-website-frontend) repo.
 
 ## Stack
 
 - **Backend:** Node.js, Express, TypeScript, TypeORM, PostgreSQL, JWT auth, Swagger/OpenAPI docs
-- **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS
 - **Infra:** Docker, Docker Compose, GitHub Actions
 
 ## Project structure
 
 ```
-ingata-pharmacy/
+pharmacy-website-backend/
 ├── backend/
 │   └── src/
 │       ├── entities/       # TypeORM entities
@@ -22,8 +21,6 @@ ingata-pharmacy/
 │       ├── swagger.ts      # OpenAPI spec config
 │       ├── seed-admin.ts   # one-time admin user seed script
 │       └── index.ts        # Express app entry point
-├── frontend/
-│   └── src/app/             # Next.js App Router pages
 ├── docker-compose.yml
 └── .github/workflows/ci.yml
 ```
@@ -89,11 +86,12 @@ From the project root:
 docker compose up --build
 ```
 
-This starts three services:
+This starts two services:
 
 - `postgres` — PostgreSQL 16 on host port `5435`, data persisted in the `postgres_data` volume
 - `backend` — Express API at http://localhost:4000 (docs at `/api-docs`)
-- `frontend` — Next.js app at http://localhost:3000
+
+To also run the frontend, clone [pharmacy-website-frontend](https://github.com/ingatatech/pharmacy-website-frontend) and run it separately (its own `docker compose up --build` or `npm run dev`), pointing `NEXT_PUBLIC_API_URL` at this backend.
 
 Check the API is up: `curl http://localhost:4000/api/health`
 
@@ -124,17 +122,6 @@ npm run seed:admin
 
 Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
 
-### Frontend
-
-```bash
-cd frontend
-cp .env.local.example .env.local
-npm install
-npm run dev             # http://localhost:3000
-```
-
-Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
-
 ## Environment variables
 
 **`backend/.env`** (see `backend/.env.example`):
@@ -145,9 +132,3 @@ Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
 | `PORT` | Backend HTTP port (default `4000`) |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL connection |
 | `JWT_SECRET` | Signing secret for auth tokens — must be set, no default |
-
-**`frontend/.env.local`** (see `frontend/.env.local.example`):
-
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Base URL the frontend calls for the backend API |
