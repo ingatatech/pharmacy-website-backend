@@ -11,16 +11,15 @@ Node.js/Express/TypeORM API on PostgreSQL with JWT authentication and role-based
 
 ```
 pharmacy-website-backend/
-├── backend/
-│   └── src/
-│       ├── entities/       # TypeORM entities
-│       ├── routes/         # Express route handlers
-│       ├── middleware/     # auth, role-checking, rate limiting
-│       ├── utils/          # JWT signing/verification
-│       ├── data-source.ts  # TypeORM + Postgres connection
-│       ├── swagger.ts      # OpenAPI spec config
-│       ├── seed-admin.ts   # one-time admin user seed script
-│       └── index.ts        # Express app entry point
+├── src/
+│   ├── entities/       # TypeORM entities
+│   ├── routes/         # Express route handlers
+│   ├── middleware/     # auth, role-checking, rate limiting
+│   ├── utils/          # JWT signing/verification
+│   ├── data-source.ts  # TypeORM + Postgres connection
+│   ├── swagger.ts      # OpenAPI spec config
+│   ├── seed-admin.ts   # one-time admin user seed script
+│   └── index.ts        # Express app entry point
 ├── docker-compose.yml
 └── .github/workflows/ci.yml
 ```
@@ -103,10 +102,7 @@ To stop: `docker compose down` (add `-v` to also remove the Postgres volume).
 
 Requires a local PostgreSQL instance (or run just the `postgres` service from Docker Compose: `docker compose up -d postgres`, exposed on host port `5435`).
 
-### Backend
-
 ```bash
-cd backend
 cp .env.example .env   # edit DB_* to match your Postgres, and set a real JWT_SECRET
 npm install
 npm run dev             # http://localhost:4000
@@ -124,7 +120,7 @@ Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
 
 ## Environment variables
 
-**`backend/.env`** (see `backend/.env.example`):
+**`.env`** (see `.env.example`):
 
 | Variable | Purpose |
 |---|---|
