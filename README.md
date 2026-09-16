@@ -37,6 +37,7 @@ pharmacy-website-backend/
 | `PharmacyLocation` | Branch locations, opening hours, offered services |
 | `ContactInquiry` | Submissions from the public contact form |
 | `RefillRequest` | Submissions from the public prescription refill form |
+| `SiteSetting` | Singleton record for corporate content: About Us, mission/vision/values, homepage hero copy, footer contact info, social links |
 
 ## API overview
 
@@ -47,11 +48,13 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/auth` | `POST /login` | `GET /me` (any authenticated user) |
 | `/services` | `GET /`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/products` | `GET /`, `GET /search?q=`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/categories` | `GET /` (`?type=service\|product`) | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/faqs` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/locations` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/articles` | `GET /`, `GET /:slug` (published only) | `GET /admin/all`, `POST /`, `PATCH /:id`, plus the workflow actions below |
-| `/contact` | `POST /` (rate limited) | — |
-| `/prescription-refill` | `POST /` (rate limited) | — |
+| `/contact` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
+| `/prescription-refill` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
+| `/site-settings` | `GET /` | `PATCH /` |
 
 **Article review workflow** (`/api/articles/:id/...`):
 
@@ -128,3 +131,4 @@ Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
 | `PORT` | Backend HTTP port (default `4000`) |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL connection |
 | `JWT_SECRET` | Signing secret for auth tokens — must be set, no default |
+| `FRONTEND_URL` | Restricts CORS to this origin; unset allows any origin (e.g. local dev) |
