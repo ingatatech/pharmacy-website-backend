@@ -37,6 +37,7 @@ pharmacy-website-backend/
 | `PharmacyLocation` | Branch locations, opening hours, offered services |
 | `ContactInquiry` | Submissions from the public contact form |
 | `RefillRequest` | Submissions from the public prescription refill form |
+| `SiteSetting` | Singleton record for corporate content: About Us, mission/vision/values, homepage hero copy, footer contact info, social links |
 
 ## API overview
 
@@ -53,6 +54,7 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/articles` | `GET /`, `GET /:slug` (published only) | `GET /admin/all`, `POST /`, `PATCH /:id`, plus the workflow actions below |
 | `/contact` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
 | `/prescription-refill` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
+| `/site-settings` | `GET /` | `PATCH /` |
 
 **Article review workflow** (`/api/articles/:id/...`):
 

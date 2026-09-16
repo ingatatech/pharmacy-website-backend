@@ -14,6 +14,7 @@ import locationsRouter from "./routes/locations";
 import articlesRouter from "./routes/articles";
 import contactRouter from "./routes/contact";
 import refillRouter from "./routes/refill";
+import siteSettingsRouter from "./routes/site-settings";
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use("/api/locations", locationsRouter);
 app.use("/api/articles", articlesRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/prescription-refill", refillRouter);
+app.use("/api/site-settings", siteSettingsRouter);
 
 AppDataSource.initialize()
   .then(() => {
