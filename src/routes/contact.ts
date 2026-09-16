@@ -3,6 +3,7 @@ import { body, validationResult } from "express-validator";
 import { AppDataSource } from "../data-source";
 import { ContactInquiry } from "../entities/ContactInquiry";
 import { publicFormLimiter } from "../middleware/rateLimiter";
+import { authenticate, requireRole } from "../middleware/auth";
 
 const router = Router();
 
@@ -81,6 +82,108 @@ router.post("/", publicFormLimiter, contactValidationRules, async (req: Request,
     message:
       "Your request has been received successfully. A member of our pharmacy team will review your request and contact you using the information you provided.",
   });
+});
+
+/**
+ * @swagger
+ * /api/contact/admin/all:
+ *   get:
+ *     summary: List all submitted contact inquiries, newest first
+ *     description: Requires admin role.
+ *     tags: [Contact]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All contact inquiries
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/ContactInquiry'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/admin/all", authenticate, requireRole("admin"), async (_req: Request, res: Response) => {
+  const contactInquiryRepository = AppDataSource.getRepository(ContactInquiry);
+  const inquiries = await contactInquiryRepository.find({ order: { createdAt: "DESC" } });
+
+  res.json(inquiries);
+});
+
+/**
+ * @swagger
+ * /api/contact/admin/{id}:
+ *   patch:
+ *     summary: Update a contact inquiry's status
+ *     description: Requires admin role.
+ *     tags: [Contact]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status: { type: string, enum: [new, in_progress, resolved] }
+ *     responses:
+ *       200:
+ *         description: The updated contact inquiry
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ContactInquiry'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Contact inquiry not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.patch("/admin/:id", authenticate, requireRole("admin"), async (req: Request, res: Response) => {
+  const contactInquiryRepository = AppDataSource.getRepository(ContactInquiry);
+  const inquiry = await contactInquiryRepository.findOne({ where: { id: String(req.params.id) } });
+
+  if (!inquiry) {
+    return res.status(404).json({ error: "Contact inquiry not found." });
+  }
+
+  contactInquiryRepository.merge(inquiry, req.body);
+  await contactInquiryRepository.save(inquiry);
+
+  res.json(inquiry);
 });
 
 export default router;

@@ -51,8 +51,8 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/faqs` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/locations` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/articles` | `GET /`, `GET /:slug` (published only) | `GET /admin/all`, `POST /`, `PATCH /:id`, plus the workflow actions below |
-| `/contact` | `POST /` (rate limited) | — |
-| `/prescription-refill` | `POST /` (rate limited) | — |
+| `/contact` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
+| `/prescription-refill` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
 
 **Article review workflow** (`/api/articles/:id/...`):
 

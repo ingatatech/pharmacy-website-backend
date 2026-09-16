@@ -3,6 +3,7 @@ import { body, validationResult } from "express-validator";
 import { AppDataSource } from "../data-source";
 import { RefillRequest } from "../entities/RefillRequest";
 import { publicFormLimiter } from "../middleware/rateLimiter";
+import { authenticate, requireRole } from "../middleware/auth";
 
 const router = Router();
 
@@ -95,6 +96,108 @@ router.post("/", publicFormLimiter, refillValidationRules, async (req: Request, 
     disclaimer:
       "Please note that submission of a request does not constitute prescription approval, renewal or confirmation that the requested medicine is available.",
   });
+});
+
+/**
+ * @swagger
+ * /api/prescription-refill/admin/all:
+ *   get:
+ *     summary: List all submitted prescription refill requests, newest first
+ *     description: Requires admin role.
+ *     tags: [Refill]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All refill requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/RefillRequest'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/admin/all", authenticate, requireRole("admin"), async (_req: Request, res: Response) => {
+  const refillRequestRepository = AppDataSource.getRepository(RefillRequest);
+  const refillRequests = await refillRequestRepository.find({ order: { createdAt: "DESC" } });
+
+  res.json(refillRequests);
+});
+
+/**
+ * @swagger
+ * /api/prescription-refill/admin/{id}:
+ *   patch:
+ *     summary: Update a prescription refill request's status
+ *     description: Requires admin role.
+ *     tags: [Refill]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status: { type: string, enum: [submitted, under_review, approved, rejected, completed] }
+ *     responses:
+ *       200:
+ *         description: The updated refill request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RefillRequest'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Refill request not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.patch("/admin/:id", authenticate, requireRole("admin"), async (req: Request, res: Response) => {
+  const refillRequestRepository = AppDataSource.getRepository(RefillRequest);
+  const refillRequest = await refillRequestRepository.findOne({ where: { id: String(req.params.id) } });
+
+  if (!refillRequest) {
+    return res.status(404).json({ error: "Refill request not found." });
+  }
+
+  refillRequestRepository.merge(refillRequest, req.body);
+  await refillRequestRepository.save(refillRequest);
+
+  res.json(refillRequest);
 });
 
 export default router;
