@@ -38,6 +38,7 @@ pharmacy-website-backend/
 | `ContactInquiry` | Submissions from the public contact form |
 | `RefillRequest` | Submissions from the public prescription refill form |
 | `SiteSetting` | Singleton record for corporate content: About Us, mission/vision/values, homepage hero copy, footer contact info, social links |
+| `AuditLog` | Records every successful authenticated create/update/delete: actor, method, path, status code, timestamp |
 
 ## API overview
 
@@ -55,6 +56,10 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/contact` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
 | `/prescription-refill` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
 | `/site-settings` | `GET /` | `PATCH /` |
+| `/audit-logs` | — | `GET /` |
+| `/uploads` | — | `POST /` (multipart/form-data, field `image`) |
+
+`GET /products`, `/services`, `/articles`, `/contact/admin/all` and `/prescription-refill/admin/all` accept optional `?page=`/`?limit=` (default limit 50, max 200) — omit both to get the full list as before. The total match count is returned in the `X-Total-Count` response header either way.
 
 **Article review workflow** (`/api/articles/:id/...`):
 
@@ -91,7 +96,7 @@ docker compose up --build
 This starts two services:
 
 - `postgres` — PostgreSQL 16 on host port `5435`, data persisted in the `postgres_data` volume
-- `backend` — Express API at http://localhost:4000 (docs at `/api-docs`)
+- `backend` — Express API at http://localhost:4000 (docs at `/api-docs`), uploaded images persisted in the `uploads_data` volume
 
 To also run the frontend, clone [pharmacy-website-frontend](https://github.com/ingatatech/pharmacy-website-frontend) and run it separately (its own `docker compose up --build` or `npm run dev`), pointing `NEXT_PUBLIC_API_URL` at this backend.
 
@@ -119,7 +124,15 @@ Create a test admin account (reads `admin@ingata.com` / `changeme123` by default
 npm run seed:admin
 ```
 
+Seed sample categories, services, products, FAQs, a branch location, site settings, and a published article (safe to re-run — skips any entity type that already has rows):
+
+```bash
+npm run seed:data
+```
+
 Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
+
+Uploaded images (`POST /api/uploads`) are written to `./uploads` and served at `/uploads/<filename>`; the directory is created automatically and is gitignored.
 
 ## Environment variables
 
