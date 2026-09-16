@@ -3,6 +3,7 @@ import { FindOptionsWhere, ILike } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { Product } from "../entities/Product";
 import { authenticate, requireRole } from "../middleware/auth";
+import { parsePagination, setTotalCountHeader } from "../utils/pagination";
 
 const router = Router();
 
@@ -20,9 +21,21 @@ const router = Router();
  *           type: string
  *         description: Filter products by category slug
  *         example: pain-relief
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number (1-indexed). Omit both page and limit to get the full list.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Results per page (default 50, max 200).
  *     responses:
  *       200:
- *         description: A list of published products
+ *         description: A list of published products. Total match count is returned in the X-Total-Count header.
  *         content:
  *           application/json:
  *             schema:
@@ -39,11 +52,13 @@ router.get("/", async (req: Request, res: Response) => {
     where.category = { slug: categorySlug };
   }
 
-  const products = await productRepository.find({
+  const [products, total] = await productRepository.findAndCount({
     where,
     relations: { category: true },
+    ...parsePagination(req),
   });
 
+  setTotalCountHeader(res, total);
   res.json(products);
 });
 

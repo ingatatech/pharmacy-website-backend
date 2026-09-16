@@ -4,6 +4,7 @@ import { AppDataSource } from "../data-source";
 import { RefillRequest } from "../entities/RefillRequest";
 import { publicFormLimiter } from "../middleware/rateLimiter";
 import { authenticate, requireRole } from "../middleware/auth";
+import { parsePagination, setTotalCountHeader } from "../utils/pagination";
 
 const router = Router();
 
@@ -107,9 +108,22 @@ router.post("/", publicFormLimiter, refillValidationRules, async (req: Request, 
  *     tags: [Refill]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number (1-indexed). Omit both page and limit to get the full list.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Results per page (default 50, max 200).
  *     responses:
  *       200:
- *         description: All refill requests
+ *         description: All refill requests. Total match count is returned in the X-Total-Count header.
  *         content:
  *           application/json:
  *             schema:
@@ -129,10 +143,14 @@ router.post("/", publicFormLimiter, refillValidationRules, async (req: Request, 
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/admin/all", authenticate, requireRole("admin"), async (_req: Request, res: Response) => {
+router.get("/admin/all", authenticate, requireRole("admin"), async (req: Request, res: Response) => {
   const refillRequestRepository = AppDataSource.getRepository(RefillRequest);
-  const refillRequests = await refillRequestRepository.find({ order: { createdAt: "DESC" } });
+  const [refillRequests, total] = await refillRequestRepository.findAndCount({
+    order: { createdAt: "DESC" },
+    ...parsePagination(req),
+  });
 
+  setTotalCountHeader(res, total);
   res.json(refillRequests);
 });
 

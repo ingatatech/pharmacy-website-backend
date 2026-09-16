@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Article } from "../entities/Article";
 import { User } from "../entities/User";
 import { authenticate, requireRole } from "../middleware/auth";
+import { parsePagination, setTotalCountHeader } from "../utils/pagination";
 
 const router = Router();
 
@@ -12,9 +13,22 @@ const router = Router();
  *   get:
  *     summary: List all published articles, newest first
  *     tags: [Articles]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number (1-indexed). Omit both page and limit to get the full list.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Results per page (default 50, max 200).
  *     responses:
  *       200:
- *         description: A list of published articles
+ *         description: A list of published articles. Total match count is returned in the X-Total-Count header.
  *         content:
  *           application/json:
  *             schema:
@@ -22,14 +36,16 @@ const router = Router();
  *               items:
  *                 $ref: '#/components/schemas/Article'
  */
-router.get("/", async (_req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   const articleRepository = AppDataSource.getRepository(Article);
-  const articles = await articleRepository.find({
+  const [articles, total] = await articleRepository.findAndCount({
     where: { status: "published" },
     relations: { author: true },
     order: { publishedAt: "DESC" },
+    ...parsePagination(req),
   });
 
+  setTotalCountHeader(res, total);
   res.json(articles);
 });
 

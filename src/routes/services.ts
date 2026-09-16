@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { Service } from "../entities/Service";
 import { authenticate, requireRole } from "../middleware/auth";
+import { parsePagination, setTotalCountHeader } from "../utils/pagination";
 
 const router = Router();
 
@@ -11,9 +12,22 @@ const router = Router();
  *   get:
  *     summary: List all published services
  *     tags: [Services]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Page number (1-indexed). Omit both page and limit to get the full list.
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Results per page (default 50, max 200).
  *     responses:
  *       200:
- *         description: A list of published pharmacy services
+ *         description: A list of published pharmacy services. Total match count is returned in the X-Total-Count header.
  *         content:
  *           application/json:
  *             schema:
@@ -21,13 +35,15 @@ const router = Router();
  *               items:
  *                 $ref: '#/components/schemas/Service'
  */
-router.get("/", async (_req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   const serviceRepository = AppDataSource.getRepository(Service);
-  const services = await serviceRepository.find({
+  const [services, total] = await serviceRepository.findAndCount({
     where: { isPublished: true },
     relations: { category: true },
+    ...parsePagination(req),
   });
 
+  setTotalCountHeader(res, total);
   res.json(services);
 });
 
