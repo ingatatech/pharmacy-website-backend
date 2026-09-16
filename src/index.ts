@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import path from "path";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -18,6 +19,7 @@ import contactRouter from "./routes/contact";
 import refillRouter from "./routes/refill";
 import siteSettingsRouter from "./routes/site-settings";
 import auditLogsRouter from "./routes/audit-logs";
+import uploadsRouter from "./routes/uploads";
 
 dotenv.config();
 
@@ -29,6 +31,7 @@ app.use(helmet());
 app.use(cors({ origin: process.env.FRONTEND_URL || true }));
 app.use(express.json());
 app.use(auditLog);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -47,6 +50,7 @@ app.use("/api/contact", contactRouter);
 app.use("/api/prescription-refill", refillRouter);
 app.use("/api/site-settings", siteSettingsRouter);
 app.use("/api/audit-logs", auditLogsRouter);
+app.use("/api/uploads", uploadsRouter);
 
 AppDataSource.initialize()
   .then(() => {
