@@ -11,6 +11,7 @@ import { PharmacyLocation } from "./entities/PharmacyLocation";
 import { ContactInquiry } from "./entities/ContactInquiry";
 import { RefillRequest } from "./entities/RefillRequest";
 import { SiteSetting } from "./entities/SiteSetting";
+import { AuditLog } from "./entities/AuditLog";
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ export const AppDataSource = new DataSource({
     ContactInquiry,
     RefillRequest,
     SiteSetting,
+    AuditLog,
   ],
   migrations: [],
   subscribers: [],

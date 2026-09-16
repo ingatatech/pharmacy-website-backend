@@ -6,6 +6,7 @@ import swaggerUi from "swagger-ui-express";
 import * as dotenv from "dotenv";
 import { AppDataSource } from "./data-source";
 import swaggerSpec from "./swagger";
+import { auditLog } from "./middleware/auditLog";
 import authRouter from "./routes/auth";
 import servicesRouter from "./routes/services";
 import productsRouter from "./routes/products";
@@ -16,6 +17,7 @@ import articlesRouter from "./routes/articles";
 import contactRouter from "./routes/contact";
 import refillRouter from "./routes/refill";
 import siteSettingsRouter from "./routes/site-settings";
+import auditLogsRouter from "./routes/audit-logs";
 
 dotenv.config();
 
@@ -26,6 +28,7 @@ app.use(helmet());
 // FRONTEND_URL restricts CORS to the deployed frontend; unset (e.g. local dev) allows any origin.
 app.use(cors({ origin: process.env.FRONTEND_URL || true }));
 app.use(express.json());
+app.use(auditLog);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -43,6 +46,7 @@ app.use("/api/articles", articlesRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/prescription-refill", refillRouter);
 app.use("/api/site-settings", siteSettingsRouter);
+app.use("/api/audit-logs", auditLogsRouter);
 
 AppDataSource.initialize()
   .then(() => {

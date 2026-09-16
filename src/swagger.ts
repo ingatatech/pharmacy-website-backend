@@ -232,6 +232,17 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
           updatedAt: { type: "string", format: "date-time" },
         },
       },
+      AuditLog: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          actor: { $ref: "#/components/schemas/PublicUser" },
+          method: { type: "string", example: "PATCH" },
+          path: { type: "string", example: "/api/articles/abc123/publish" },
+          statusCode: { type: "integer", example: 200 },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
       ContactInquiryInput: {
         type: "object",
         required: ["fullName", "phoneNumber", "email", "message"],
