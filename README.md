@@ -47,6 +47,7 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/auth` | `POST /login` | `GET /me` (any authenticated user) |
 | `/services` | `GET /`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/products` | `GET /`, `GET /search?q=`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/categories` | `GET /` (`?type=service\|product`) | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/faqs` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/locations` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/articles` | `GET /`, `GET /:slug` (published only) | `GET /admin/all`, `POST /`, `PATCH /:id`, plus the workflow actions below |
