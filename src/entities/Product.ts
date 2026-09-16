@@ -62,6 +62,12 @@ export class Product {
   @Column({ type: "varchar", nullable: true })
   imageUrl: string | null;
 
+  @Column({ type: "varchar", nullable: true })
+  metaTitle: string | null;
+
+  @Column({ type: "text", nullable: true })
+  metaDescription: string | null;
+
   @Column({ default: true })
   isPublished: boolean;
 

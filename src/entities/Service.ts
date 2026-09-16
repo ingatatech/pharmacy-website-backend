@@ -48,6 +48,12 @@ export class Service {
   @JoinColumn()
   category: Category | null;
 
+  @Column({ type: "varchar", nullable: true })
+  metaTitle: string | null;
+
+  @Column({ type: "text", nullable: true })
+  metaDescription: string | null;
+
   @Column({ default: true })
   isPublished: boolean;
 
