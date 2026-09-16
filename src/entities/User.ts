@@ -10,7 +10,10 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  // Excluded from default queries (including relations like Article.author or
+  // AuditLog.actor) so it never leaks in an API response by accident. Login
+  // explicitly re-selects it to verify the password.
+  @Column({ select: false })
   passwordHash: string;
 
   @Column()

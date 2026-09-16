@@ -52,7 +52,10 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 
   const userRepository = AppDataSource.getRepository(User);
-  const user = await userRepository.findOne({ where: { email: String(email) } });
+  const user = await userRepository.findOne({
+    where: { email: String(email) },
+    select: { id: true, email: true, passwordHash: true, fullName: true, role: true },
+  });
 
   if (!user) {
     return res.status(401).json({ error: "Invalid email or password" });
