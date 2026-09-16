@@ -131,3 +131,4 @@ Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
 | `PORT` | Backend HTTP port (default `4000`) |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL connection |
 | `JWT_SECRET` | Signing secret for auth tokens — must be set, no default |
+| `FRONTEND_URL` | Restricts CORS to this origin; unset allows any origin (e.g. local dev) |

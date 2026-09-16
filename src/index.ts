@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import * as dotenv from "dotenv";
 import { AppDataSource } from "./data-source";
@@ -21,7 +22,9 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 4000;
 
-app.use(cors());
+app.use(helmet());
+// FRONTEND_URL restricts CORS to the deployed frontend; unset (e.g. local dev) allows any origin.
+app.use(cors({ origin: process.env.FRONTEND_URL || true }));
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => {
