@@ -1,7 +1,5 @@
-import "reflect-metadata";
 import bcrypt from "bcrypt";
-import { AppDataSource } from "./data-source";
-import { User } from "./entities/User";
+import { prisma } from "./prisma";
 
 // Placeholder credentials for local/dev use only.
 // CHANGE THIS PASSWORD IMMEDIATELY in any shared or production environment.
@@ -13,32 +11,30 @@ async function seedAdmin() {
   const password = process.argv[3] || DEFAULT_PASSWORD;
   const fullName = process.argv[4] || "Ingata Admin";
 
-  await AppDataSource.initialize();
-
-  const userRepository = AppDataSource.getRepository(User);
-  const existing = await userRepository.findOne({ where: { email } });
+  const existing = await prisma.user.findUnique({ where: { email } });
 
   if (existing) {
     console.log(`A user with email "${email}" already exists. No changes made.`);
-    await AppDataSource.destroy();
+    await prisma.$disconnect();
     return;
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const admin = userRepository.create({
-    email,
-    passwordHash,
-    fullName,
-    role: "admin",
+  await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+      fullName,
+      role: "admin",
+    },
   });
-  await userRepository.save(admin);
 
   console.log(`Admin user created: ${email}`);
   if (email === DEFAULT_EMAIL && password === DEFAULT_PASSWORD) {
     console.log("WARNING: default placeholder credentials were used. Change the password immediately.");
   }
 
-  await AppDataSource.destroy();
+  await prisma.$disconnect();
 }
 
 seedAdmin().catch((error) => {

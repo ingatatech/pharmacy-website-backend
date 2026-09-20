@@ -1,32 +1,38 @@
 # Ingata Pharmacy — Backend
 
-Node.js/Express/TypeORM API on PostgreSQL with JWT authentication and role-based authorization, for the Ingata Pharmacy application. The frontend lives in the separate [pharmacy-website-frontend](https://github.com/ingatatech/pharmacy-website-frontend) repo.
+Node.js/Express/Prisma API on PostgreSQL with JWT authentication and role-based authorization, for the Ingata Pharmacy application. The frontend lives in the separate [pharmacy-website-frontend](https://github.com/ingatatech/pharmacy-website-frontend) repo.
 
 ## Stack
 
-- **Backend:** Node.js, Express, TypeScript, TypeORM, PostgreSQL, JWT auth, Swagger/OpenAPI docs
+- **Backend:** Node.js, Express, TypeScript, Prisma ORM, PostgreSQL, JWT auth, Swagger/OpenAPI docs
 - **Infra:** Docker, Docker Compose, GitHub Actions
 
 ## Project structure
 
 ```
 pharmacy-website-backend/
+├── prisma/
+│   ├── schema.prisma    # Prisma models — the single source of truth for the schema
+│   └── migrations/      # versioned SQL migrations
+├── prisma.config.ts     # Prisma CLI config (schema path, migrations path, datasource URL)
 ├── src/
-│   ├── entities/       # TypeORM entities
-│   ├── routes/         # Express route handlers
-│   ├── middleware/     # auth, role-checking, rate limiting
-│   ├── utils/          # JWT signing/verification
-│   ├── data-source.ts  # TypeORM + Postgres connection
-│   ├── swagger.ts      # OpenAPI spec config
-│   ├── seed-admin.ts   # one-time admin user seed script
-│   └── index.ts        # Express app entry point
+│   ├── routes/          # Express route handlers
+│   ├── middleware/      # auth, role-checking, rate limiting, audit logging
+│   ├── utils/           # JWT signing/verification, pagination, Prisma error helpers
+│   ├── types.ts         # shared string-union types (roles, statuses, etc.)
+│   ├── prisma.ts        # PrismaClient singleton (driver adapter + passwordHash omit)
+│   ├── swagger.ts       # OpenAPI spec config
+│   ├── seed-admin.ts    # one-time admin user seed script
+│   └── index.ts         # Express app entry point
 ├── docker-compose.yml
 └── .github/workflows/ci.yml
 ```
 
 ## Data model
 
-| Entity | Purpose |
+Defined in `prisma/schema.prisma`. Enum-like fields (`role`, `status`, `type`, `availabilityStatus`) are plain `varchar` columns rather than native Postgres enums; their allowed values are typed as string-union types in `src/types.ts`.
+
+| Model | Purpose |
 |---|---|
 | `User` | Admin / pharmacist-reviewer accounts (email, bcrypt password hash, role) |
 | `Category` | Shared category taxonomy for services and products |
@@ -111,9 +117,10 @@ To stop: `docker compose down` (add `-v` to also remove the Postgres volume).
 Requires a local PostgreSQL instance (or run just the `postgres` service from Docker Compose: `docker compose up -d postgres`, exposed on host port `5435`).
 
 ```bash
-cp .env.example .env   # edit DB_* to match your Postgres, and set a real JWT_SECRET
-npm install
-npm run dev             # http://localhost:4000
+cp .env.example .env    # edit DATABASE_URL to match your Postgres, and set a real JWT_SECRET
+npm install              # postinstall runs `prisma generate`
+npm run db:migrate       # applies prisma/migrations to your database (dev-mode, creates new migrations as needed)
+npm run dev               # http://localhost:4000
 ```
 
 Generate a `JWT_SECRET` for local dev with: `openssl rand -hex 64` (or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
@@ -130,7 +137,7 @@ Seed sample categories, services, products, FAQs, a branch location, site settin
 npm run seed:data
 ```
 
-Other scripts: `npm run build`, `npm start`, `npm run typecheck`.
+Other scripts: `npm run build` (runs `prisma generate` then `tsc`), `npm start`, `npm run typecheck`, `npm run db:deploy` (applies committed migrations without prompting — used in production/CI), `npm run db:studio` (Prisma Studio, a local DB browser UI).
 
 Uploaded images (`POST /api/uploads`) are written to `./uploads` and served at `/uploads/<filename>`; the directory is created automatically and is gitignored.
 
@@ -140,8 +147,8 @@ Uploaded images (`POST /api/uploads`) are written to `./uploads` and served at `
 
 | Variable | Purpose |
 |---|---|
-| `NODE_ENV` | `development` disables TypeORM's schema sync in `production` |
+| `NODE_ENV` | `production`/`development` |
 | `PORT` | Backend HTTP port (default `4000`) |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL connection |
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://user:pass@host:5432/db?schema=public` — read by both the app (`src/prisma.ts`) and the Prisma CLI (`prisma.config.ts`) |
 | `JWT_SECRET` | Signing secret for auth tokens — must be set, no default |
 | `FRONTEND_URL` | Restricts CORS to this origin; unset allows any origin (e.g. local dev) |

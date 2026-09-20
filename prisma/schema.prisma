@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Article {
+  id               String    @id(map: "PK_40808690eb7b915046558c0f81b") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title            String    @db.VarChar
+  slug             String    @unique(map: "UQ_0ab85f4be07b22d79906671d72f") @db.VarChar
+  content          String
+  featuredImageUrl String?   @db.VarChar
+  category         String?   @db.VarChar
+  tags             String[]  @default([])
+  status           String    @default("draft") @db.VarChar
+  publishedAt      DateTime? @db.Timestamp(6)
+  lastReviewedAt   DateTime? @db.Timestamp(6)
+  metaTitle        String?   @db.VarChar
+  metaDescription  String?
+  createdAt        DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  authorId         String?   @db.Uuid
+  reviewerId       String?   @db.Uuid
+  author           User?     @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a9c5f4ec6cceb1604b4a3c84c87")
+  reviewer         User?     @relation("ArticleReviewer", fields: [reviewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ad9fe17bba7abceb04678d05e4f")
+
+  @@map("article")
+}
+
+model AuditLog {
+  id         String   @id(map: "PK_07fefa57f7f5ab8fc3f52b3ed0b") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  method     String   @db.VarChar
+  path       String   @db.VarChar
+  statusCode Int
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  actorId    String?  @db.Uuid
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_cb6aa6f6fd56f08eafb60316225")
+
+  @@map("audit_log")
+}
+
+model Category {
+  id       String    @id(map: "PK_9c4e4a89e3674fc9f382d733f03") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name     String    @db.VarChar
+  slug     String    @unique(map: "UQ_cb73208f151aa71cdd78f662d70") @db.VarChar
+  type     String    @db.VarChar
+  products Product[]
+  services Service[]
+
+  @@map("category")
+}
+
+model ContactInquiry {
+  id                     String   @id(map: "PK_1eb681c80ab4415aa7e15c5be1d") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  fullName               String   @db.VarChar
+  phoneNumber            String   @db.VarChar
+  email                  String   @db.VarChar
+  subject                String?  @db.VarChar
+  message                String
+  preferredContactMethod String?  @db.VarChar
+  preferredBranch        String?  @db.VarChar
+  status                 String   @default("new") @db.VarChar
+  createdAt              DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("contact_inquiry")
+}
+
+model Faq {
+  id           String  @id(map: "PK_d6f5a52b1a96dd8d0591f9fbc47") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  question     String
+  answer       String
+  displayOrder Int     @default(0)
+  isPublished  Boolean @default(true)
+
+  @@map("faq")
+}
+
+model PharmacyLocation {
+  id                String   @id(map: "PK_d4c336c60a927bdc324d78f0bea") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  branchName        String   @db.VarChar
+  address           String   @db.VarChar
+  telephone         String?  @db.VarChar
+  latitude          Float?
+  longitude         Float?
+  openingHours      Json?
+  availableServices String[] @default([])
+  isActive          Boolean  @default(true)
+
+  @@map("pharmacy_location")
+}
+
+model Product {
+  id                   String    @id(map: "PK_bebc9158e480b949565b4dc7a82") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                 String    @db.VarChar
+  slug                 String    @unique(map: "UQ_8cfaf4a1e80806d58e3dbe69224") @db.VarChar
+  brandName            String?   @db.VarChar
+  generalDescription   String?
+  generalUse           String?
+  precautions          String?
+  storageInformation   String?
+  activeIngredient     String?   @db.VarChar
+  formStrength         String?   @db.VarChar
+  manufacturer         String?   @db.VarChar
+  dosageInformation    String?
+  requiresPrescription Boolean   @default(false)
+  availabilityStatus   String    @default("unknown") @db.VarChar
+  imageUrl             String?   @db.VarChar
+  isPublished          Boolean   @default(true)
+  createdAt            DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  categoryId           String?   @db.Uuid
+  metaTitle            String?   @db.VarChar
+  metaDescription      String?
+  category             Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff0c0301a95e517153df97f6812")
+
+  @@map("product")
+}
+
+model RefillRequest {
+  id                    String   @id(map: "PK_234a5dd8a2c23a899e2effa1a99") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  fullName              String   @db.VarChar
+  phoneNumber           String   @db.VarChar
+  email                 String?  @db.VarChar
+  preferredBranch       String?  @db.VarChar
+  prescriptionReference String?  @db.VarChar
+  medicationName        String?  @db.VarChar
+  additionalNotes       String?
+  preferredPickupMethod String?  @db.VarChar
+  status                String   @default("submitted") @db.VarChar
+  createdAt             DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("refill_request")
+}
+
+model Service {
+  id                  String    @id(map: "PK_85a21558c006647cd76fdce044b") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                String    @db.VarChar
+  slug                String    @unique(map: "UQ_4df47ef659e04d5be78ddb6b598") @db.VarChar
+  shortDescription    String
+  detailedDescription String?
+  imageUrl            String?   @db.VarChar
+  keyBenefit          String?
+  intendedCustomers   String?
+  requirements        String?
+  process             String?
+  limitations         String?
+  isPublished         Boolean   @default(true)
+  createdAt           DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  categoryId          String?   @db.Uuid
+  metaTitle           String?   @db.VarChar
+  metaDescription     String?
+  category            Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_cb169715cbb8c74f263ba192ca8")
+
+  @@map("service")
+}
+
+model SiteSetting {
+  id             String   @id(map: "PK_543f4809a6cf8b4f253a24f55d8") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  pharmacyName   String?  @db.VarChar
+  aboutUs        String?
+  mission        String?
+  vision         String?
+  coreValues     String[] @default([])
+  whyChooseUs    String?
+  heroHeadline   String?  @db.VarChar
+  heroSubheading String?
+  phone          String?  @db.VarChar
+  email          String?  @db.VarChar
+  address        String?  @db.VarChar
+  facebookUrl    String?  @db.VarChar
+  instagramUrl   String?  @db.VarChar
+  linkedinUrl    String?  @db.VarChar
+  xUrl           String?  @db.VarChar
+  whatsappUrl    String?  @db.VarChar
+  youtubeUrl     String?  @db.VarChar
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  @@map("site_setting")
+}
+
+model User {
+  id               String     @id(map: "PK_cace4a159ff9f2512dd42373760") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email            String     @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
+  passwordHash     String     @db.VarChar
+  fullName         String     @db.VarChar
+  role             String     @default("admin") @db.VarChar
+  createdAt        DateTime   @default(now()) @db.Timestamp(6)
+  authoredArticles Article[]  @relation("ArticleAuthor")
+  reviewedArticles Article[]  @relation("ArticleReviewer")
+  auditLogs        AuditLog[]
+
+  @@map("user")
+}

@@ -1,98 +1,84 @@
-import "reflect-metadata";
-import { AppDataSource } from "./data-source";
-import { Category } from "./entities/Category";
-import { Service } from "./entities/Service";
-import { Product } from "./entities/Product";
-import { Faq } from "./entities/Faq";
-import { PharmacyLocation } from "./entities/PharmacyLocation";
-import { SiteSetting } from "./entities/SiteSetting";
-import { Article } from "./entities/Article";
-import { User } from "./entities/User";
+import { prisma } from "./prisma";
 
 async function seedCategories() {
-  const categoryRepository = AppDataSource.getRepository(Category);
-  if ((await categoryRepository.count()) > 0) {
+  if ((await prisma.category.count()) > 0) {
     console.log("Categories already exist. Skipping.");
     return;
   }
 
-  await categoryRepository.save(
-    categoryRepository.create([
+  await prisma.category.createMany({
+    data: [
       { name: "Prescription Services", slug: "prescription-services", type: "service" },
       { name: "Wellness Services", slug: "wellness-services", type: "service" },
       { name: "Pain Relief", slug: "pain-relief", type: "product" },
       { name: "Vitamins & Supplements", slug: "vitamins-supplements", type: "product" },
       { name: "Personal Care", slug: "personal-care", type: "product" },
-    ])
-  );
+    ],
+  });
   console.log("Seeded categories.");
 }
 
 async function seedServices() {
-  const serviceRepository = AppDataSource.getRepository(Service);
-  if ((await serviceRepository.count()) > 0) {
+  if ((await prisma.service.count()) > 0) {
     console.log("Services already exist. Skipping.");
     return;
   }
 
-  const categoryRepository = AppDataSource.getRepository(Category);
-  const prescriptionCategory = await categoryRepository.findOne({ where: { slug: "prescription-services" } });
-  const wellnessCategory = await categoryRepository.findOne({ where: { slug: "wellness-services" } });
+  const prescriptionCategory = await prisma.category.findUnique({ where: { slug: "prescription-services" } });
+  const wellnessCategory = await prisma.category.findUnique({ where: { slug: "wellness-services" } });
 
-  await serviceRepository.save(
-    serviceRepository.create([
+  await prisma.service.createMany({
+    data: [
       {
         name: "Prescription Refills",
         slug: "prescription-refills",
         shortDescription: "Fast, convenient refills for your ongoing medication.",
         keyBenefit: "No need to wait in line at the counter.",
-        category: prescriptionCategory,
+        categoryId: prescriptionCategory?.id,
       },
       {
         name: "Medication Counseling",
         slug: "medication-counseling",
         shortDescription: "Professional guidance on how to use your medicines safely.",
         keyBenefit: "One-on-one time with a qualified pharmacist.",
-        category: prescriptionCategory,
+        categoryId: prescriptionCategory?.id,
       },
       {
         name: "Health & Wellness",
         slug: "health-wellness",
         shortDescription: "General wellness support, preventive health information and screening.",
         keyBenefit: "Preventive care without an appointment.",
-        category: wellnessCategory,
+        categoryId: wellnessCategory?.id,
       },
       {
         name: "Vaccination Services",
         slug: "vaccination-services",
         shortDescription: "Approved vaccinations available at select branches.",
         keyBenefit: "Walk-in vaccination, no clinic visit required.",
-        category: wellnessCategory,
+        categoryId: wellnessCategory?.id,
       },
-    ])
-  );
+    ],
+  });
   console.log("Seeded services.");
 }
 
 async function seedProducts() {
-  const productRepository = AppDataSource.getRepository(Product);
-  if ((await productRepository.count()) > 0) {
+  if ((await prisma.product.count()) > 0) {
     console.log("Products already exist. Skipping.");
     return;
   }
 
-  const categoryRepository = AppDataSource.getRepository(Category);
-  const painReliefCategory = await categoryRepository.findOne({ where: { slug: "pain-relief" } });
-  const vitaminsCategory = await categoryRepository.findOne({ where: { slug: "vitamins-supplements" } });
-  const personalCareCategory = await categoryRepository.findOne({ where: { slug: "personal-care" } });
+  const painReliefCategory = await prisma.category.findUnique({ where: { slug: "pain-relief" } });
+  const vitaminsCategory = await prisma.category.findUnique({ where: { slug: "vitamins-supplements" } });
+  const personalCareCategory = await prisma.category.findUnique({ where: { slug: "personal-care" } });
 
-  await productRepository.save(
-    productRepository.create([
+  await prisma.product.createMany({
+    data: [
       {
         name: "Paracetamol 500mg",
         slug: "paracetamol-500mg",
         brandName: "Panadol",
-        category: painReliefCategory,
+        categoryId: painReliefCategory?.id,
         generalUse: "Relief of mild to moderate pain and fever.",
         activeIngredient: "Paracetamol",
         formStrength: "500mg tablet",
@@ -103,7 +89,7 @@ async function seedProducts() {
       {
         name: "Vitamin C 1000mg",
         slug: "vitamin-c-1000mg",
-        category: vitaminsCategory,
+        categoryId: vitaminsCategory?.id,
         generalUse: "Immune system support.",
         activeIngredient: "Ascorbic acid",
         formStrength: "1000mg tablet",
@@ -113,7 +99,7 @@ async function seedProducts() {
       {
         name: "Hand Sanitizer Gel",
         slug: "hand-sanitizer-gel",
-        category: personalCareCategory,
+        categoryId: personalCareCategory?.id,
         generalUse: "Kills common germs without water.",
         requiresPrescription: false,
         availabilityStatus: "in_stock",
@@ -121,21 +107,20 @@ async function seedProducts() {
       {
         name: "Amoxicillin 500mg",
         slug: "amoxicillin-500mg",
-        category: painReliefCategory,
+        categoryId: painReliefCategory?.id,
         generalUse: "Antibiotic for bacterial infections.",
         activeIngredient: "Amoxicillin",
         formStrength: "500mg capsule",
         requiresPrescription: true,
         availabilityStatus: "unknown",
       },
-    ])
-  );
+    ],
+  });
   console.log("Seeded products.");
 }
 
 async function seedFaqs() {
-  const faqRepository = AppDataSource.getRepository(Faq);
-  if ((await faqRepository.count()) > 0) {
+  if ((await prisma.faq.count()) > 0) {
     console.log("FAQs already exist. Skipping.");
     return;
   }
@@ -149,54 +134,48 @@ async function seedFaqs() {
     ["How can I contact the pharmacy?", "Use the Contact Us page, call a branch directly, or reach us on WhatsApp where available."],
   ] as const;
 
-  await faqRepository.save(
-    faqRepository.create(
-      faqs.map(([question, answer], index) => ({ question, answer, displayOrder: index }))
-    )
-  );
+  await prisma.faq.createMany({
+    data: faqs.map(([question, answer], index) => ({ question, answer, displayOrder: index })),
+  });
   console.log("Seeded FAQs.");
 }
 
 async function seedLocations() {
-  const locationRepository = AppDataSource.getRepository(PharmacyLocation);
-  if ((await locationRepository.count()) > 0) {
+  if ((await prisma.pharmacyLocation.count()) > 0) {
     console.log("Locations already exist. Skipping.");
     return;
   }
 
-  await locationRepository.save(
-    locationRepository.create([
-      {
-        branchName: "Ingata Pharmacy - Kigali City Branch",
-        address: "KN 4 Ave, Kigali, Rwanda",
-        telephone: "+250788123456",
-        latitude: -1.9441,
-        longitude: 30.0619,
-        openingHours: {
-          monday: "8:00-20:00",
-          tuesday: "8:00-20:00",
-          wednesday: "8:00-20:00",
-          thursday: "8:00-20:00",
-          friday: "8:00-20:00",
-          saturday: "9:00-18:00",
-          sunday: "10:00-14:00",
-        },
-        availableServices: ["prescription-refills", "medication-counseling", "vaccination-services"],
+  await prisma.pharmacyLocation.create({
+    data: {
+      branchName: "Ingata Pharmacy - Kigali City Branch",
+      address: "KN 4 Ave, Kigali, Rwanda",
+      telephone: "+250788123456",
+      latitude: -1.9441,
+      longitude: 30.0619,
+      openingHours: {
+        monday: "8:00-20:00",
+        tuesday: "8:00-20:00",
+        wednesday: "8:00-20:00",
+        thursday: "8:00-20:00",
+        friday: "8:00-20:00",
+        saturday: "9:00-18:00",
+        sunday: "10:00-14:00",
       },
-    ])
-  );
+      availableServices: ["prescription-refills", "medication-counseling", "vaccination-services"],
+    },
+  });
   console.log("Seeded pharmacy locations.");
 }
 
 async function seedSiteSettings() {
-  const siteSettingRepository = AppDataSource.getRepository(SiteSetting);
-  if ((await siteSettingRepository.count()) > 0) {
+  if ((await prisma.siteSetting.count()) > 0) {
     console.log("Site settings already exist. Skipping.");
     return;
   }
 
-  await siteSettingRepository.save(
-    siteSettingRepository.create({
+  await prisma.siteSetting.create({
+    data: {
       pharmacyName: "Ingata Pharmacy",
       aboutUs:
         "Ingata Pharmacy is a customer-focused pharmacy committed to providing trusted pharmaceutical products, professional pharmacy services and reliable health information to the communities we serve.",
@@ -211,47 +190,43 @@ async function seedSiteSettings() {
       phone: "+250788123456",
       email: "info@ingata.example.com",
       address: "KN 4 Ave, Kigali, Rwanda",
-    })
-  );
+    },
+  });
   console.log("Seeded site settings.");
 }
 
 async function seedArticle() {
-  const articleRepository = AppDataSource.getRepository(Article);
-  if ((await articleRepository.count()) > 0) {
+  if ((await prisma.article.count()) > 0) {
     console.log("Articles already exist. Skipping.");
     return;
   }
 
-  const userRepository = AppDataSource.getRepository(User);
-  const admin = await userRepository.findOne({ where: { role: "admin" } });
+  const admin = await prisma.user.findFirst({ where: { role: "admin" } });
 
   if (!admin) {
     console.log("No admin user found. Run `npm run seed:admin` first to seed a sample article. Skipping.");
     return;
   }
 
-  await articleRepository.save(
-    articleRepository.create({
+  await prisma.article.create({
+    data: {
       title: "5 Tips for Managing Your Blood Pressure Medication",
       slug: "5-tips-for-managing-your-blood-pressure-medication",
       content:
         "Consistent timing, proper storage and regular check-ins with your pharmacist all help you get the most from your blood pressure medication. Speak to our team if you have questions about your prescription.",
       category: "Health Tips",
       tags: ["hypertension", "medication-adherence"],
-      author: admin,
+      authorId: admin.id,
       status: "published",
       publishedAt: new Date(),
       metaTitle: "Managing Blood Pressure Medication | Ingata Pharmacy",
       metaDescription: "Practical tips for taking your blood pressure medication safely and consistently.",
-    })
-  );
+    },
+  });
   console.log("Seeded a sample article.");
 }
 
 async function seedData() {
-  await AppDataSource.initialize();
-
   await seedCategories();
   await seedServices();
   await seedProducts();
@@ -260,7 +235,7 @@ async function seedData() {
   await seedSiteSettings();
   await seedArticle();
 
-  await AppDataSource.destroy();
+  await prisma.$disconnect();
 }
 
 seedData().catch((error) => {
