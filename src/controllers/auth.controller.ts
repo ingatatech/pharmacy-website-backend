@@ -1,6 +1,20 @@
 import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
-import { LoginInput } from "../validators/auth.validator";
+import { LoginInput, RegisterInput } from "../validators/auth.validator";
+
+export async function register(req: Request<{}, unknown, RegisterInput>, res: Response) {
+  const result = await authService.register(req.body);
+
+  res.status(201).json({
+    token: result.token,
+    user: {
+      id: result.user.id,
+      email: result.user.email,
+      fullName: result.user.fullName,
+      role: result.user.role,
+    },
+  });
+}
 
 export async function login(req: Request<{}, unknown, LoginInput>, res: Response) {
   const { email, password } = req.body;

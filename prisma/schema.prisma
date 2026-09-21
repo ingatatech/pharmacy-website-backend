@@ -186,7 +186,7 @@ model User {
   email            String     @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
   passwordHash     String     @db.VarChar
   fullName         String     @db.VarChar
-  role             String     @default("admin") @db.VarChar
+  role             String     @default("customer") @db.VarChar
   createdAt        DateTime   @default(now()) @db.Timestamp(6)
   authoredArticles Article[]  @relation("ArticleAuthor")
   reviewedArticles Article[]  @relation("ArticleReviewer")

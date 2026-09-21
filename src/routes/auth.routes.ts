@@ -2,9 +2,70 @@ import { Router } from "express";
 import * as authController from "../controllers/auth.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
-import { loginSchema } from "../validators/auth.validator";
+import { registerLimiter } from "../middleware/rateLimiter.middleware";
+import { loginSchema, registerSchema } from "../validators/auth.validator";
 
 const router = Router();
+
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Create a new customer account
+ *     description: >
+ *       Public — no authentication required. Rate limited to 5 requests per
+ *       15 minutes per IP address. The created account always has the
+ *       "customer" role; there is no way to request any other role here —
+ *       only an existing admin can grant "admin" or "pharmacist_reviewer",
+ *       via PATCH /api/admin/users/:id. Returns a JWT immediately, the same
+ *       as logging in.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fullName, email, password]
+ *             properties:
+ *               fullName: { type: string, example: "Jane Customer" }
+ *               email: { type: string, format: email, example: "jane@example.com" }
+ *               password: { type: string, format: password, example: "at-least-8-characters" }
+ *     responses:
+ *       201:
+ *         description: Account created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token: { type: string }
+ *                 user:
+ *                   $ref: '#/components/schemas/PublicUser'
+ *       400:
+ *         description: Validation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       409:
+ *         description: A user with that email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Too many requests. Please try again later.
+ */
+router.post("/register", registerLimiter, validateBody(registerSchema), authController.register);
 
 /**
  * @swagger

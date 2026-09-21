@@ -12,6 +12,16 @@ export async function list(req: Request, res: Response) {
   res.json(categories);
 }
 
+export async function getBySlug(req: Request, res: Response) {
+  const category = await categoryService.findBySlug(String(req.params.slug));
+
+  if (!category) {
+    return res.status(404).json({ error: "Category not found." });
+  }
+
+  res.json(category);
+}
+
 export async function create(req: Request<{}, unknown, CreateCategoryInput>, res: Response) {
   const category = await categoryService.create(req.body);
 

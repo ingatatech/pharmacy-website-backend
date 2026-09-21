@@ -11,6 +11,10 @@ export async function findAll(type: CategoryType | undefined) {
   return prisma.category.findMany({ where, orderBy: { name: "asc" } });
 }
 
+export async function findBySlug(slug: string) {
+  return prisma.category.findUnique({ where: { slug } });
+}
+
 export async function create(data: Prisma.CategoryCreateInput) {
   return prisma.category.create({ data });
 }

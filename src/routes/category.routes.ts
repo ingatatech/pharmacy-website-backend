@@ -35,6 +35,35 @@ router.get("/", categoryController.list);
 
 /**
  * @swagger
+ * /api/categories/{slug}:
+ *   get:
+ *     summary: Get a single category by slug
+ *     tags: [Categories]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: vitamins-supplements
+ *     responses:
+ *       200:
+ *         description: The requested category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       404:
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/:slug", categoryController.getBySlug);
+
+/**
+ * @swagger
  * /api/categories:
  *   post:
  *     summary: Create a new category

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CORS manual check</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    button { font-size: 1rem; padding: 8px 16px; cursor: pointer; }
+    pre { background: #f4f4f4; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+    .ok { color: #0a7d2c; }
+    .fail { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <h1>CORS manual check</h1>
+  <p>
+    This page is a real browser page, unlike curl or Supertest — so it is
+    actually subject to CORS. It does not prove anything by itself; what it
+    proves depends on <strong>what origin you serve it from</strong> (see
+    below).
+  </p>
+  <p>This page's own origin: <code id="origin"></code></p>
+  <p>API base URL: <code id="api-url"></code> (edit the <code>API_URL</code> constant below if your backend runs elsewhere)</p>
+
+  <button id="run">Fetch GET /api/health from the backend</button>
+  <pre id="result">(not run yet)</pre>
+
+  <h2>How to actually test both outcomes</h2>
+  <ol>
+    <li>
+      Start the backend with <code>FRONTEND_URL=http://localhost:3000</code>
+      (the default in <code>.env.example</code>).
+    </li>
+    <li>
+      <strong>Allowed origin:</strong> serve this exact file from port 3000
+      and open it in a browser:
+      <pre>npx serve tests/manual -l 3000</pre>
+      then visit <code>http://localhost:3000/cors-check.html</code> and click
+      the button. Expect: <span class="ok">success</span>, JSON printed.
+    </li>
+    <li>
+      <strong>Unauthorized origin:</strong> serve the same file from a
+      different port instead:
+      <pre>npx serve tests/manual -l 5500</pre>
+      then visit <code>http://localhost:5500/cors-check.html</code> and click
+      the button. Expect: <span class="fail">failure</span> — open the
+      browser's DevTools Console to see the actual
+      <code>blocked by CORS policy</code> error. The Network tab will show
+      the request still reached the server and got a 200 back — the
+      <em>browser</em> is what refused to hand the response to this page's
+      JavaScript, which is the whole point: CORS protects browsers from
+      malicious pages, it is not a server-side access check.
+    </li>
+  </ol>
+
+  <script>
+    const API_URL = "http://localhost:4000/api/health";
+    document.getElementById("origin").textContent = window.location.origin;
+    document.getElementById("api-url").textContent = API_URL;
+
+    document.getElementById("run").addEventListener("click", async () => {
+      const result = document.getElementById("result");
+      result.textContent = "Fetching...";
+      result.className = "";
+      try {
+        const response = await fetch(API_URL);
+        const body = await response.json();
+        result.textContent =
+          "SUCCESS — the browser allowed JS to read this response:\n" +
+          "status: " + response.status + "\n" +
+          "body: " + JSON.stringify(body);
+        result.className = "ok";
+      } catch (error) {
+        result.textContent =
+          "FAILED — the browser blocked this page's JS from reading the response.\n" +
+          "(Check DevTools Console for the actual CORS error message.)\n\n" +
+          "Error: " + error;
+        result.className = "fail";
+      }
+    });
+  </script>
+</body>
+</html>
