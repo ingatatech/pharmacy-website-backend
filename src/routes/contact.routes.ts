@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as contactController from "../controllers/contact.controller";
 import { publicFormLimiter } from "../middleware/rateLimiter.middleware";
-import { authenticate, requireRole } from "../middleware/auth.middleware";
+import { authenticate, optionalAuthenticate, requireRole } from "../middleware/auth.middleware";
 import { validateBody, validateParams } from "../middleware/validate.middleware";
 import { createContactInquirySchema, updateContactInquirySchema } from "../validators/contact.validator";
 import { idParamSchema } from "../validators/common.validator";
@@ -13,7 +13,12 @@ const router = Router();
  * /api/contact:
  *   post:
  *     summary: Submit a customer contact inquiry
- *     description: Rate limited to 5 requests per 15 minutes per IP address.
+ *     description: >
+ *       Rate limited to 5 requests per 15 minutes per IP address. No account
+ *       is required. If the request includes a valid bearer token, the
+ *       inquiry is linked to that account so it shows up in
+ *       GET /api/contact/mine; if not, it's submitted anonymously exactly as
+ *       before.
  *     tags: [Contact]
  *     requestBody:
  *       required: true
@@ -49,7 +54,40 @@ const router = Router();
  *                   type: string
  *                   example: Too many requests. Please try again later.
  */
-router.post("/", publicFormLimiter, validateBody(createContactInquirySchema), contactController.create);
+router.post(
+  "/",
+  publicFormLimiter,
+  optionalAuthenticate,
+  validateBody(createContactInquirySchema),
+  contactController.create
+);
+
+/**
+ * @swagger
+ * /api/contact/mine:
+ *   get:
+ *     summary: List the authenticated caller's own contact inquiries
+ *     description: Requires authentication (any role) — not admin-only. Returns only inquiries submitted while logged in as this account.
+ *     tags: [Contact]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The caller's own contact inquiries, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/ContactInquiry'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/mine", authenticate, contactController.listMine);
 
 /**
  * @swagger

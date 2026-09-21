@@ -51,7 +51,7 @@ Defined in `prisma/schema.prisma`. Enum-like fields (`role`, `status`, `type`, `
 | `ContactInquiry` | Submissions from the public contact form |
 | `RefillRequest` | Submissions from the public prescription refill form |
 | `SiteSetting` | Singleton record for corporate content: About Us, mission/vision/values, homepage hero copy, footer contact info, social links |
-| `AuditLog` | Records every successful authenticated create/update/delete: actor, method, path, status code, timestamp |
+| `AuditLog` | Records every successful staff (`admin`/`pharmacist_reviewer`) create/update/delete: actor, method, path, status code, timestamp. A logged-in `customer` submitting a public form is deliberately **not** logged here — this is a staff-accountability trail, not a record of routine customer activity. |
 
 ## API overview
 
@@ -66,14 +66,16 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/faqs` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/locations` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/articles` | `GET /`, `GET /:slug` (published only) | `GET /admin/all`, `POST /`, `PATCH /:id`, plus the workflow actions below |
-| `/contact` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
-| `/prescription-refill` | `POST /` (rate limited) | `GET /admin/all`, `PATCH /admin/:id` |
+| `/contact` | `POST /` (rate limited), `GET /mine`\* | `GET /admin/all`, `PATCH /admin/:id` |
+| `/prescription-refill` | `POST /` (rate limited), `GET /mine`\* | `GET /admin/all`, `PATCH /admin/:id` |
 | `/site-settings` | `GET /` | `PATCH /` |
 | `/audit-logs` | — | `GET /` |
 | `/uploads` | — | `POST /` (multipart/form-data, field `image`) |
 | `/admin/users` | — | `GET /`, `POST /`, `PATCH /:id`, `DELETE /:id` — manage any account's role (admin/pharmacist_reviewer/customer) |
 
 `GET /products`, `/services`, `/articles`, `/contact/admin/all` and `/prescription-refill/admin/all` accept optional `?page=`/`?limit=` (default limit 50, max 200) — omit both to get the full list as before. The total match count is returned in the `X-Total-Count` response header either way.
+
+\* `GET /contact/mine` and `GET /prescription-refill/mine` require authentication but not any particular role — any logged-in account (including `customer`) can see their own past submissions. `POST /contact` and `POST /prescription-refill` still work without an account exactly as before; if the caller happens to send a valid token, the submission is additionally linked to that account (via a nullable `userId`) so it shows up in `/mine` — this never gates or changes the anonymous flow.
 
 **Article review workflow** (`/api/articles/:id/...`):
 
@@ -108,7 +110,7 @@ request -> authenticate (401 if no/invalid token)
 
 ## Rate limiting
 
-The public `POST /api/contact` and `POST /api/prescription-refill` endpoints are limited to **5 requests per 15 minutes per IP**. Exceeding the limit returns `429 { error: "Too many requests. Please try again later." }`. `POST /api/auth/register` has its own separate 5-per-15-minutes bucket (account creation is a higher-value abuse target, so it isn't allowed to share a budget with the other two). All rate limiting is disabled when `NODE_ENV=test`, so the automated test suite can exercise these endpoints repeatedly without tripping it.
+The public `POST /api/contact` and `POST /api/prescription-refill` endpoints are limited to **5 requests per 15 minutes per IP**. Exceeding the limit returns `429 { error: "Too many requests. Please try again later." }`. `POST /api/auth/register` has its own separate 5-per-15-minutes bucket (account creation is a higher-value abuse target, so it isn't allowed to share a budget with the other two). `POST /api/auth/login` has its own bucket too, at **10 requests per 15 minutes per IP** — slightly more generous than the others since legitimate users mistype passwords, but still enough to make brute-forcing a password from one IP impractical. All rate limiting is disabled when `NODE_ENV=test`, so the automated test suite can exercise these endpoints repeatedly without tripping it.
 
 ## Run locally with Docker Compose
 

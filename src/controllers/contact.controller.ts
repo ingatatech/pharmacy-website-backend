@@ -5,7 +5,11 @@ import { isNotFoundError } from "../utils/prisma-errors";
 import { CreateContactInquiryInput, UpdateContactInquiryInput } from "../validators/contact.validator";
 
 export async function create(req: Request<{}, unknown, CreateContactInquiryInput>, res: Response) {
-  await contactService.create(req.body);
+  // POST /api/contact stays public — optionalAuthenticate (not authenticate)
+  // runs ahead of this in the route, so req.user is only set when the
+  // caller happened to send a valid token. Anonymous submissions still
+  // work exactly as before, just with no userId attached.
+  await contactService.create({ ...req.body, userId: req.user?.userId });
 
   res.status(201).json({
     message:
@@ -17,6 +21,12 @@ export async function listAllForAdmin(req: Request, res: Response) {
   const [inquiries, total] = await contactService.findAll(parsePagination(req));
 
   setTotalCountHeader(res, total);
+  res.json(inquiries);
+}
+
+export async function listMine(req: Request, res: Response) {
+  const inquiries = await contactService.findByUserId(req.user!.userId);
+
   res.json(inquiries);
 }
 

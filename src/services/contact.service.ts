@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
 import { PaginationOptions } from "../utils/pagination";
 
-export async function create(data: Prisma.ContactInquiryCreateInput) {
+export async function create(data: Prisma.ContactInquiryUncheckedCreateInput) {
   return prisma.contactInquiry.create({ data });
 }
 
@@ -14,6 +14,13 @@ export async function findAll(pagination: PaginationOptions) {
     }),
     prisma.contactInquiry.count(),
   ]);
+}
+
+export async function findByUserId(userId: string) {
+  return prisma.contactInquiry.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export async function update(id: string, data: Prisma.ContactInquiryUpdateInput) {

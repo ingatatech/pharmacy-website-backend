@@ -26,6 +26,27 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+// For routes that stay public but behave differently for a logged-in caller
+// (e.g. linking a contact/refill submission to the account that made it).
+// Unlike `authenticate`, a missing or invalid token is not an error here —
+// it just proceeds as anonymous. Never use this to gate access to
+// anything; it only ever adds information, never removes a requirement.
+export function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.slice("Bearer ".length);
+    try {
+      req.user = verifyToken(token);
+    } catch {
+      // Invalid/expired token on an optional-auth route: ignore it and
+      // continue as anonymous rather than failing the request.
+    }
+  }
+
+  next();
+}
+
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {

@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as authController from "../controllers/auth.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
-import { registerLimiter } from "../middleware/rateLimiter.middleware";
+import { registerLimiter, loginLimiter } from "../middleware/rateLimiter.middleware";
 import { loginSchema, registerSchema } from "../validators/auth.validator";
 
 const router = Router();
@@ -72,7 +72,10 @@ router.post("/register", registerLimiter, validateBody(registerSchema), authCont
  * /api/auth/login:
  *   post:
  *     summary: Log in with email and password
- *     description: Returns a JWT bearer token on success. Use the "Authorize" button above to attach this token to subsequent requests.
+ *     description: >
+ *       Returns a JWT bearer token on success. Use the "Authorize" button
+ *       above to attach this token to subsequent requests. Rate limited to
+ *       10 requests per 15 minutes per IP address.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -103,8 +106,18 @@ router.post("/register", registerLimiter, validateBody(registerSchema), authCont
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Too many requests. Please try again later.
  */
-router.post("/login", validateBody(loginSchema), authController.login);
+router.post("/login", loginLimiter, validateBody(loginSchema), authController.login);
 
 /**
  * @swagger

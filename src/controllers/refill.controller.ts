@@ -5,7 +5,7 @@ import { isNotFoundError } from "../utils/prisma-errors";
 import { CreateRefillRequestInput, UpdateRefillRequestInput } from "../validators/refill.validator";
 
 export async function create(req: Request<{}, unknown, CreateRefillRequestInput>, res: Response) {
-  await refillService.create({ ...req.body, status: "submitted" });
+  await refillService.create({ ...req.body, status: "submitted", userId: req.user?.userId });
 
   res.status(201).json({
     message:
@@ -19,6 +19,12 @@ export async function listAllForAdmin(req: Request, res: Response) {
   const [refillRequests, total] = await refillService.findAll(parsePagination(req));
 
   setTotalCountHeader(res, total);
+  res.json(refillRequests);
+}
+
+export async function listMine(req: Request, res: Response) {
+  const refillRequests = await refillService.findByUserId(req.user!.userId);
+
   res.json(refillRequests);
 }
 

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as refillController from "../controllers/refill.controller";
 import { publicFormLimiter } from "../middleware/rateLimiter.middleware";
-import { authenticate, requireRole } from "../middleware/auth.middleware";
+import { authenticate, optionalAuthenticate, requireRole } from "../middleware/auth.middleware";
 import { validateBody, validateParams } from "../middleware/validate.middleware";
 import { createRefillRequestSchema, updateRefillRequestSchema } from "../validators/refill.validator";
 import { idParamSchema } from "../validators/common.validator";
@@ -13,7 +13,12 @@ const router = Router();
  * /api/prescription-refill:
  *   post:
  *     summary: Submit a prescription refill request
- *     description: Rate limited to 5 requests per 15 minutes per IP address.
+ *     description: >
+ *       Rate limited to 5 requests per 15 minutes per IP address. No account
+ *       is required. If the request includes a valid bearer token, the
+ *       request is linked to that account so it shows up in
+ *       GET /api/prescription-refill/mine; if not, it's submitted
+ *       anonymously exactly as before.
  *     tags: [Refill]
  *     requestBody:
  *       required: true
@@ -52,7 +57,40 @@ const router = Router();
  *                   type: string
  *                   example: Too many requests. Please try again later.
  */
-router.post("/", publicFormLimiter, validateBody(createRefillRequestSchema), refillController.create);
+router.post(
+  "/",
+  publicFormLimiter,
+  optionalAuthenticate,
+  validateBody(createRefillRequestSchema),
+  refillController.create
+);
+
+/**
+ * @swagger
+ * /api/prescription-refill/mine:
+ *   get:
+ *     summary: List the authenticated caller's own prescription refill requests
+ *     description: Requires authentication (any role) — not admin-only. Returns only requests submitted while logged in as this account.
+ *     tags: [Refill]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The caller's own refill requests, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/RefillRequest'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/mine", authenticate, refillController.listMine);
 
 /**
  * @swagger

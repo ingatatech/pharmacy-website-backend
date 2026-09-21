@@ -30,3 +30,19 @@ export const registerLimiter = rateLimit({
   message: { error: "Too many requests. Please try again later." },
   skip: skipInTests,
 });
+
+// Without this, nothing stops unlimited password guesses against any
+// account, including admin ones. 10/15min (rather than the 5 used
+// elsewhere) is deliberately a bit more generous than the other limiters —
+// legitimate users mistype passwords more often than they double-submit a
+// contact form — while still making sustained brute-forcing from one IP
+// impractical (an attacker gains nothing by trying faster than this; they'd
+// have to spread attempts across many IPs, a much costlier attack).
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please try again later." },
+  skip: skipInTests,
+});

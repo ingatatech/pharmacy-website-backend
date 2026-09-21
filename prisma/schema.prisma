@@ -63,6 +63,14 @@ model ContactInquiry {
   preferredBranch        String?  @db.VarChar
   status                 String   @default("new") @db.VarChar
   createdAt              DateTime @default(now()) @db.Timestamp(6)
+  userId                 String?  @db.Uuid
+  // Submitting the form has never required an account, so this stays
+  // optional — it's only set when the caller happened to be logged in.
+  // SetNull (not the Restrict/NoAction used for staff-authored records
+  // elsewhere) because deleting a customer account should never be blocked
+  // by, or destroy, an inquiry they once submitted — it just becomes
+  // unowned, the way it would have been if they'd never logged in at all.
+  user                   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("contact_inquiry")
 }
@@ -130,6 +138,8 @@ model RefillRequest {
   preferredPickupMethod String?  @db.VarChar
   status                String   @default("submitted") @db.VarChar
   createdAt             DateTime @default(now()) @db.Timestamp(6)
+  userId                String?  @db.Uuid
+  user                  User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("refill_request")
 }
@@ -191,6 +201,8 @@ model User {
   authoredArticles Article[]  @relation("ArticleAuthor")
   reviewedArticles Article[]  @relation("ArticleReviewer")
   auditLogs        AuditLog[]
+  contactInquiries ContactInquiry[]
+  refillRequests   RefillRequest[]
 
   @@map("user")
 }
