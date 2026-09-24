@@ -16,6 +16,11 @@ export async function findActive() {
   return prisma.pharmacyLocation.findMany({ where: { isActive: true } });
 }
 
+// Unfiltered — includes inactive branches — for the admin dashboard.
+export async function findAll() {
+  return prisma.pharmacyLocation.findMany({ orderBy: { branchName: "asc" } });
+}
+
 export async function create(data: CreateLocationInput) {
   return prisma.pharmacyLocation.create({
     data: { ...data, openingHours: toJsonInput(data.openingHours) },

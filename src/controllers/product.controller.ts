@@ -13,6 +13,11 @@ export async function list(req: Request, res: Response) {
   res.json(products);
 }
 
+export async function listAllForAdmin(_req: Request, res: Response) {
+  const products = await productService.findAll();
+  res.json(products);
+}
+
 export async function search(req: Request, res: Response) {
   const q = req.query.q ? String(req.query.q) : "";
 

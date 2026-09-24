@@ -27,6 +27,39 @@ router.get("/", faqController.list);
 
 /**
  * @swagger
+ * /api/faqs/admin/all:
+ *   get:
+ *     summary: List every FAQ, including unpublished ones
+ *     description: Requires admin role.
+ *     tags: [Faqs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All FAQs, ordered by display order
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Faq'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/admin/all", authenticate, requireRole("admin"), faqController.listAllForAdmin);
+
+/**
+ * @swagger
  * /api/faqs:
  *   post:
  *     summary: Create a new FAQ

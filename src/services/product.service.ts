@@ -39,6 +39,15 @@ export async function findPublishedBySlug(slug: string) {
   });
 }
 
+// Unfiltered — includes drafts (isPublished: false) — for the admin
+// dashboard, which needs to list and edit products before they go live.
+export async function findAll() {
+  return prisma.product.findMany({
+    include: { category: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function create(data: Prisma.ProductCreateInput) {
   return prisma.product.create({ data });
 }

@@ -9,6 +9,11 @@ export async function list(_req: Request, res: Response) {
   res.json(faqs);
 }
 
+export async function listAllForAdmin(_req: Request, res: Response) {
+  const faqs = await faqService.findAll();
+  res.json(faqs);
+}
+
 export async function create(req: Request<{}, unknown, CreateFaqInput>, res: Response) {
   const faq = await faqService.create(req.body);
 

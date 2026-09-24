@@ -8,6 +8,11 @@ export async function findPublished() {
   });
 }
 
+// Unfiltered — includes unpublished FAQs — for the admin dashboard.
+export async function findAll() {
+  return prisma.faq.findMany({ orderBy: { displayOrder: "asc" } });
+}
+
 export async function create(data: Prisma.FaqCreateInput) {
   return prisma.faq.create({ data });
 }

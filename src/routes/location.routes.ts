@@ -27,6 +27,39 @@ router.get("/", locationController.list);
 
 /**
  * @swagger
+ * /api/locations/admin/all:
+ *   get:
+ *     summary: List every pharmacy location, including inactive branches
+ *     description: Requires admin role.
+ *     tags: [Locations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All pharmacy locations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/PharmacyLocation'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/admin/all", authenticate, requireRole("admin"), locationController.listAllForAdmin);
+
+/**
+ * @swagger
  * /api/locations:
  *   post:
  *     summary: Create a new pharmacy location

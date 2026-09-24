@@ -40,6 +40,40 @@ router.get("/", serviceController.list);
 
 /**
  * @swagger
+ * /api/services/admin/all:
+ *   get:
+ *     summary: List every service, including unpublished drafts
+ *     description: Requires admin role.
+ *     tags: [Services]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All services, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Service'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// Registered before "/:slug" so Express doesn't match "admin" as a slug value.
+router.get("/admin/all", authenticate, requireRole("admin"), serviceController.listAllForAdmin);
+
+/**
+ * @swagger
  * /api/services/{slug}:
  *   get:
  *     summary: Get a single published service by slug

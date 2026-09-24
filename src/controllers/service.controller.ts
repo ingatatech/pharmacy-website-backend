@@ -11,6 +11,11 @@ export async function list(req: Request, res: Response) {
   res.json(services);
 }
 
+export async function listAllForAdmin(_req: Request, res: Response) {
+  const services = await serviceService.findAll();
+  res.json(services);
+}
+
 export async function getBySlug(req: Request, res: Response) {
   const service = await serviceService.findPublishedBySlug(String(req.params.slug));
 

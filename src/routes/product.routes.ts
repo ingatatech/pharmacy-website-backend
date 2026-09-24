@@ -80,6 +80,40 @@ router.get("/search", productController.search);
 
 /**
  * @swagger
+ * /api/products/admin/all:
+ *   get:
+ *     summary: List every product, including unpublished drafts
+ *     description: Requires admin role.
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All products, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Product'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// Registered before "/:slug" so Express doesn't match "admin" as a slug value.
+router.get("/admin/all", authenticate, requireRole("admin"), productController.listAllForAdmin);
+
+/**
+ * @swagger
  * /api/products/{slug}:
  *   get:
  *     summary: Get a single published product by slug

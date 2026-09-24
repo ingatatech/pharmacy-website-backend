@@ -9,6 +9,11 @@ export async function list(_req: Request, res: Response) {
   res.json(locations);
 }
 
+export async function listAllForAdmin(_req: Request, res: Response) {
+  const locations = await locationService.findAll();
+  res.json(locations);
+}
+
 export async function create(req: Request<{}, unknown, CreateLocationInput>, res: Response) {
   const location = await locationService.create(req.body);
 

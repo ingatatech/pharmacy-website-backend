@@ -20,6 +20,15 @@ export async function findPublishedBySlug(slug: string) {
   });
 }
 
+// Unfiltered — includes drafts (isPublished: false) — for the admin
+// dashboard, which needs to list and edit services before they go live.
+export async function findAll() {
+  return prisma.service.findMany({
+    include: { category: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function create(data: Prisma.ServiceCreateInput) {
   return prisma.service.create({ data });
 }
