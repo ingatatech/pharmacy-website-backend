@@ -23,3 +23,16 @@ export const registerSchema = z
   .strict();
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+// Self-service profile update (PATCH /api/auth/me) — deliberately has no
+// `role` field, unlike the admin-only updateUserSchema in user.validator.ts.
+// A customer can never change their own role through this endpoint.
+export const updateProfileSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Full name must be at least 2 characters.").optional(),
+    email: z.email("A valid email address is required.").optional(),
+    password: z.string().min(8, "Password must be at least 8 characters.").optional(),
+  })
+  .strict();
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

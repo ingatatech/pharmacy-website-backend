@@ -166,6 +166,7 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
           email: { type: "string", format: "email", example: "reviewer@ingata.com" },
           fullName: { type: "string", example: "Dr. Alice Uwase" },
           role: { type: "string", enum: ["admin", "pharmacist_reviewer"], example: "pharmacist_reviewer" },
+          createdAt: { type: "string", format: "date-time" },
         },
       },
       ContactInquiry: {

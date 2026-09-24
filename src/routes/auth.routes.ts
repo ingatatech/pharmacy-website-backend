@@ -3,7 +3,7 @@ import * as authController from "../controllers/auth.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
 import { registerLimiter, loginLimiter } from "../middleware/rateLimiter.middleware";
-import { loginSchema, registerSchema } from "../validators/auth.validator";
+import { loginSchema, registerSchema, updateProfileSchema } from "../validators/auth.validator";
 
 const router = Router();
 
@@ -142,5 +142,43 @@ router.post("/login", loginLimiter, validateBody(loginSchema), authController.lo
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/me", authenticate, authController.me);
+
+/**
+ * @swagger
+ * /api/auth/me:
+ *   patch:
+ *     summary: Update the currently authenticated user's own profile
+ *     description: >
+ *       Self-service only — there is no `role` field on this endpoint, so a
+ *       caller can never change their own role. Only the fields provided are
+ *       changed; sending a password re-hashes and replaces it.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName: { type: string, example: "Jane Customer" }
+ *               email: { type: string, format: email, example: "jane@example.com" }
+ *               password: { type: string, format: password, example: "at-least-8-characters" }
+ *     responses:
+ *       200:
+ *         description: The updated profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PublicUser'
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Authentication required
+ *       409:
+ *         description: A user with that email already exists
+ */
+router.patch("/me", authenticate, validateBody(updateProfileSchema), authController.updateMe);
 
 export default router;
