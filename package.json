@@ -13,6 +13,7 @@
     "postinstall": "prisma generate",
     "seed:admin": "ts-node src/seed-admin.ts",
     "seed:data": "ts-node src/seed-data.ts",
+    "seed:more": "ts-node src/seed-more-data.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio"
