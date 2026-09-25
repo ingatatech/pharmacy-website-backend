@@ -73,10 +73,13 @@ router.get("/admin/all", authenticate, requireRole("admin"), locationController.
  *         application/json:
  *           schema:
  *             type: object
- *             required: [branchName, address]
+ *             required: [slug, branchName, address]
  *             properties:
+ *               slug: { type: string, example: "ingata-pharmacy-kigali-city-branch" }
  *               branchName: { type: string, example: "Ingata Pharmacy - Kigali City Branch" }
  *               address: { type: string, example: "KN 4 Ave, Kigali, Rwanda" }
+ *               description: { type: string, nullable: true, example: "Our flagship branch in the city center." }
+ *               photoUrl: { type: string, nullable: true, example: "/uploads/kigali-city-branch.jpg" }
  *               telephone: { type: string, nullable: true, example: "+250788123456" }
  *               latitude: { type: number, nullable: true, example: -1.9441 }
  *               longitude: { type: number, nullable: true, example: 30.0619 }

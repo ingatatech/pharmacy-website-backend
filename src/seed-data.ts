@@ -148,6 +148,7 @@ async function seedLocations() {
 
   await prisma.pharmacyLocation.create({
     data: {
+      slug: "ingata-pharmacy-kigali-city-branch",
       branchName: "Ingata Pharmacy - Kigali City Branch",
       address: "KN 4 Ave, Kigali, Rwanda",
       telephone: "+250788123456",

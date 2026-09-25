@@ -217,6 +217,7 @@ async function seedLocations() {
 
   const locations = [
     {
+      slug: "ingata-pharmacy-remera-branch",
       branchName: "Ingata Pharmacy - Remera Branch",
       address: "KG 11 Ave, Remera, Kigali, Rwanda",
       telephone: "+250788123457",
@@ -234,6 +235,7 @@ async function seedLocations() {
       availableServices: ["prescription-refills", "medication-counseling", "health-screening"],
     },
     {
+      slug: "ingata-pharmacy-kimironko-branch",
       branchName: "Ingata Pharmacy - Kimironko Branch",
       address: "KG 7 Ave, Kimironko, Kigali, Rwanda",
       telephone: "+250788123458",
@@ -251,6 +253,7 @@ async function seedLocations() {
       availableServices: ["prescription-refills", "vaccination-services", "home-delivery"],
     },
     {
+      slug: "ingata-pharmacy-nyamirambo-branch",
       branchName: "Ingata Pharmacy - Nyamirambo Branch",
       address: "KN 88 St, Nyamirambo, Kigali, Rwanda",
       telephone: "+250788123459",

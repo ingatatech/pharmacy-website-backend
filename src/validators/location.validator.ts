@@ -17,6 +17,7 @@ const openingHoursSchema = z
 
 export const createLocationSchema = z
   .object({
+    slug: requiredString("Slug"),
     branchName: requiredString("Branch name"),
     address: requiredString("Address"),
     telephone: optionalNullableString,
@@ -25,6 +26,8 @@ export const createLocationSchema = z
     openingHours: openingHoursSchema.nullable().optional(),
     availableServices: z.array(z.string().trim().min(1)).optional(),
     isActive: z.boolean().optional(),
+    description: optionalNullableString,
+    photoUrl: optionalNullableString,
   })
   .strict();
 
