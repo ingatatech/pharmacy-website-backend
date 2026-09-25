@@ -7,6 +7,7 @@ export const updateSiteSettingSchema = z
     aboutUs: optionalNullableString,
     mission: optionalNullableString,
     vision: optionalNullableString,
+    companyHistory: optionalNullableString,
     coreValues: z.array(z.string().trim().min(1)).optional(),
     whyChooseUs: optionalNullableString,
     heroHeadline: optionalNullableString,
@@ -20,6 +21,8 @@ export const updateSiteSettingSchema = z
     xUrl: optionalNullableString,
     whatsappUrl: optionalNullableString,
     youtubeUrl: optionalNullableString,
+    announcementMessage: optionalNullableString,
+    announcementActive: z.boolean().optional(),
   })
   .strict();
 
