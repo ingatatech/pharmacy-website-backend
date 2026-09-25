@@ -58,6 +58,7 @@ model ContactInquiry {
   phoneNumber            String   @db.VarChar
   email                  String   @db.VarChar
   subject                String?  @db.VarChar
+  inquiryType            String?  @db.VarChar
   message                String
   preferredContactMethod String?  @db.VarChar
   preferredBranch        String?  @db.VarChar
@@ -85,18 +86,56 @@ model Faq {
   @@map("faq")
 }
 
+model Testimonial {
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  customerName     String   @db.VarChar
+  customerCategory String?  @db.VarChar
+  testimonialText  String
+  photoUrl         String?  @db.VarChar
+  displayOrder     Int      @default(0)
+  isPublished      Boolean  @default(false)
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("testimonial")
+}
+
 model PharmacyLocation {
-  id                String   @id(map: "PK_d4c336c60a927bdc324d78f0bea") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  branchName        String   @db.VarChar
-  address           String   @db.VarChar
-  telephone         String?  @db.VarChar
+  id                String       @id(map: "PK_d4c336c60a927bdc324d78f0bea") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  slug              String       @unique @db.VarChar
+  branchName        String       @db.VarChar
+  address           String       @db.VarChar
+  telephone         String?      @db.VarChar
   latitude          Float?
   longitude         Float?
   openingHours      Json?
-  availableServices String[] @default([])
-  isActive          Boolean  @default(true)
+  availableServices String[]     @default([])
+  isActive          Boolean      @default(true)
+  // A short blurb specific to this branch — distinct from the company-wide
+  // SiteSetting.aboutUs text, e.g. "Our flagship branch, open since 2015...".
+  description       String?
+  photoUrl          String?      @db.VarChar
+  team              TeamMember[]
 
   @@map("pharmacy_location")
+}
+
+model TeamMember {
+  id           String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  fullName     String            @db.VarChar
+  role         String            @db.VarChar
+  credentials  String?           @db.VarChar
+  bio          String?
+  photoUrl     String?           @db.VarChar
+  displayOrder Int               @default(0)
+  isPublished  Boolean           @default(false)
+  createdAt    DateTime          @default(now()) @db.Timestamp(6)
+  // Nullable: a member tied to one branch shows only on that branch's page;
+  // left unassigned, they're not shown anywhere yet — kept for a possible
+  // future company-wide "Leadership" section without forcing that scope now.
+  locationId   String?           @db.Uuid
+  location     PharmacyLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@map("team_member")
 }
 
 model Product {
@@ -173,6 +212,7 @@ model SiteSetting {
   aboutUs        String?
   mission        String?
   vision         String?
+  companyHistory String?
   coreValues     String[] @default([])
   whyChooseUs    String?
   heroHeadline   String?  @db.VarChar
@@ -186,6 +226,13 @@ model SiteSetting {
   xUrl           String?  @db.VarChar
   whatsappUrl    String?  @db.VarChar
   youtubeUrl     String?  @db.VarChar
+  // A single site-wide notice (holiday hours, a temporary closure, a stock
+  // alert) shown as a dismissible banner on every public page. Deliberately
+  // just one message rather than a list/history — the SRS asks for
+  // visitors to "receive important pharmacy announcements," not a full
+  // news feed (that's what /articles is for).
+  announcementMessage String?  @db.VarChar(500)
+  announcementActive  Boolean  @default(false)
   updatedAt      DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
   @@map("site_setting")
