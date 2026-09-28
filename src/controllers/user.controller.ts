@@ -7,8 +7,11 @@ import { CreateUserInput, UpdateUserInput } from "../validators/user.validator";
 // passwordHash out of everything these calls return, so there is nothing
 // extra to strip here before sending the response.
 
-export async function list(_req: Request, res: Response) {
-  const users = await userService.findAll();
+export async function list(req: Request, res: Response) {
+  // ?role=pharmacist_reviewer backs the admin Pharmacists page. Anything else
+  // is ignored rather than rejected, so this can't be used to probe for roles
+  // that don't exist — it just returns no rows.
+  const users = await userService.findAll(req.query.role as string | undefined);
 
   res.json(users);
 }

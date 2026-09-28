@@ -149,7 +149,7 @@ Generate a `JWT_SECRET` for local dev with: `openssl rand -hex 64` (or `node -e 
 Create a test admin account (reads `admin@ingata.com` / `changeme123` by default — override with `npm run seed:admin -- <email> <password> <fullName>`):
 
 ```bash
-npm run seed:admin
+npm run seed:admin 
 ```
 
 Seed sample categories, services, products, FAQs, a branch location, site settings, and a published article (safe to re-run — skips any entity type that already has rows):

@@ -72,6 +72,16 @@ model ContactInquiry {
   // by, or destroy, an inquiry they once submitted — it just becomes
   // unowned, the way it would have been if they'd never logged in at all.
   user                   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Which branch the enquiry was directed at, as a real relation rather than
+  // only the free-text preferredBranch column. The public form has always had
+  // the option to pick a branch, and the public GET /api/locations list is
+  // available to the browser unauthenticated, so the form now sends the
+  // chosen location's id alongside its name. SetNull for the same reason as
+  // `user` above: retiring a branch must not destroy enquiries it received.
+  // Rows written before this column existed keep preferredBranch only and are
+  // visible to admins, but won't match a pharmacist's branch filter.
+  locationId             String?           @db.Uuid
+  location               PharmacyLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   @@map("contact_inquiry")
 }
@@ -115,6 +125,14 @@ model PharmacyLocation {
   description       String?
   photoUrl          String?      @db.VarChar
   team              TeamMember[]
+  // Branches that a pharmacist_reviewer account is responsible for. The
+  // relation is Restrict (not SetNull or Cascade) so a branch can never be
+  // deleted while staff are still assigned to it — the P2003 handler turns
+  // that into a clean 409 instead of silently orphaning an account that no
+  // longer has a branch to work in.
+  pharmacists       User[]       @relation("UserLocation")
+  refillRequests    RefillRequest[]
+  contactInquiries  ContactInquiry[]
 
   @@map("pharmacy_location")
 }
@@ -179,6 +197,14 @@ model RefillRequest {
   createdAt             DateTime @default(now()) @db.Timestamp(6)
   userId                String?  @db.Uuid
   user                  User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Which branch the refill was requested from, as a real relation rather than
+  // only the free-text preferredBranch column — a pharmacist's area filters
+  // on this, which a misspelled branch name could not satisfy reliably.
+  // The public GET /api/locations list is unauthenticated, so the form sends
+  // the chosen location's id alongside its name. SetNull, not Restrict:
+  // retiring a branch must not delete the requests customers already placed.
+  locationId            String?           @db.Uuid
+  location              PharmacyLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   @@map("refill_request")
 }
@@ -245,6 +271,14 @@ model User {
   fullName         String     @db.VarChar
   role             String     @default("customer") @db.VarChar
   createdAt        DateTime   @default(now()) @db.Timestamp(6)
+  // The branch this staff member is responsible for. Only meaningful for
+  // pharmacist_reviewer accounts, and nullable so that admins (who oversee
+  // every branch) and customers need no branch, and so a pharmacist can be
+  // created before a branch is chosen. Their whole area is scoped by this id,
+  // so an unassigned pharmacist sees an empty area with a prompt to ask an
+  // admin to set it, rather than another branch's data.
+  locationId       String?            @db.Uuid
+  location         PharmacyLocation?  @relation("UserLocation", fields: [locationId], references: [id], onDelete: Restrict)
   authoredArticles Article[]  @relation("ArticleAuthor")
   reviewedArticles Article[]  @relation("ArticleReviewer")
   auditLogs        AuditLog[]

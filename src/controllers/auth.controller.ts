@@ -3,13 +3,28 @@ import * as authService from "../services/auth.service";
 import * as userService from "../services/user.service";
 import { LoginInput, RegisterInput, UpdateProfileInput } from "../validators/auth.validator";
 
-function toPublicUser(user: { id: string; email: string; fullName: string; role: string; createdAt: Date }) {
+// Whitelists rather than spreading the row, so a new column on User (e.g. the
+// passwordHash login re-includes internally) can never reach a client by
+// accident. locationId/location are included because a pharmacist's entire
+// area is scoped to their branch, and having it in the login response lets the
+// UI show their branch without a second round trip on every page load.
+function toPublicUser(user: {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  createdAt: Date;
+  locationId: string | null;
+  location?: { id: string; branchName: string; slug: string } | null;
+}) {
   return {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
     role: user.role,
     createdAt: user.createdAt,
+    locationId: user.locationId ?? null,
+    location: user.location ?? null,
   };
 }
 

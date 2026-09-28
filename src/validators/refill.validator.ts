@@ -7,6 +7,11 @@ export const createRefillRequestSchema = z
     phoneNumber: requiredString("Phone number"),
     email: z.email().nullable().optional(),
     preferredBranch: optionalNullableString,
+    // Id of the branch chosen in the form's branch picker, so the row joins to
+    // a real branch and a pharmacist's branch filter can find it. The name
+    // above is still accepted and stored — this only makes the branch
+    // reliable to match on. Foreign-key checked by the DB (P2003 -> 409).
+    locationId: z.uuid("Must be a valid branch id.").nullable().optional(),
     prescriptionReference: optionalNullableString,
     medicationName: optionalNullableString,
     additionalNotes: optionalNullableString,

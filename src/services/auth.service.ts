@@ -16,7 +16,11 @@ export async function register(input: RegisterInput) {
 export async function login(email: string, password: string) {
   const user = await prisma.user.findUnique({
     where: { email },
+    // passwordHash is re-included here purely so bcrypt.compare can run; it is
+    // never sent to a client, because toPublicUser() in the controller
+    // whitelists the fields it returns rather than passing the row through.
     omit: { passwordHash: false },
+    include: { location: { select: { id: true, branchName: true, slug: true } } },
   });
 
   if (!user) {
@@ -33,5 +37,8 @@ export async function login(email: string, password: string) {
 }
 
 export async function getUserById(id: string) {
-  return prisma.user.findUnique({ where: { id } });
+  return prisma.user.findUnique({
+    where: { id },
+    include: { location: { select: { id: true, branchName: true, slug: true } } },
+  });
 }

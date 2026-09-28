@@ -13,7 +13,13 @@ const email = z.email("A valid email address is required.");
 const password = z.string().min(8, "Password must be at least 8 characters.");
 const role = z.enum(userRoles);
 
-export const createUserSchema = z.object({ fullName, email, password, role }).strict();
+// Which branch a pharmacist_reviewer is responsible for. Nullable on purpose:
+// admins oversee every branch and customers have no branch, and a pharmacist
+// can be created before a branch is chosen. Sending null clears the assignment,
+// which is how an admin moves a pharmacist to unassigned.
+const locationId = z.uuid("Must be a valid branch id.").nullable().optional();
+
+export const createUserSchema = z.object({ fullName, email, password, role, locationId }).strict();
 
 export const updateUserSchema = z
   .object({
@@ -21,6 +27,7 @@ export const updateUserSchema = z
     email: email.optional(),
     password: password.optional(),
     role: role.optional(),
+    locationId,
   })
   .strict();
 
