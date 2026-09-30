@@ -4,10 +4,17 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     name: Backend
-    runs-on: ubuntu-latest
+    # Pinned rather than "latest": the ubuntu-latest label migrates to
+    # Ubuntu 26 on 2026-10-19, which would change the base image (and so the
+    # Node/glibc builds this suite runs against) without any commit here.
+    runs-on: ubuntu-24.04
 
     # A real, throwaway Postgres for the test suite — it only exists for the
     # lifetime of this job and is never the development or production database.
