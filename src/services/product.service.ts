@@ -12,6 +12,11 @@ export async function findPublished(categorySlug: string | undefined, pagination
     prisma.product.findMany({
       where,
       include: { category: true },
+      // Newest first. Without an explicit order Postgres returns rows in
+      // whatever order it happens to produce, so the catalog and the homepage
+      // teaser could show a different set of products on every cache refresh.
+      // ...pagination carries take/skip and must stay last so the limit wins.
+      orderBy: { createdAt: "desc" },
       ...pagination,
     }),
     prisma.product.count({ where }),
