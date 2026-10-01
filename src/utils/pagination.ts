@@ -9,7 +9,7 @@ export interface PaginationOptions {
 }
 
 /**
- * Parses optional "page"/"limit" query params into Prisma take/skip.
+ * Parses optional "page"/"limit" query params into TypeORM take/skip.
  * Returns an empty object (no take/skip applied) when neither is given,
  * so existing callers that don't paginate keep getting the full list.
  */

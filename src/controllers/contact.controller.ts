@@ -1,15 +1,17 @@
 import { Request, Response } from "express";
 import * as contactService from "../services/contact.service";
 import { parsePagination, setTotalCountHeader } from "../utils/pagination";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateContactInquiryInput, UpdateContactInquiryInput } from "../validators/contact.validator";
+import { CreateContactInquiryData } from "../services/contact.service";
 
 export async function create(req: Request<{}, unknown, CreateContactInquiryInput>, res: Response) {
   // POST /api/contact stays public — optionalAuthenticate (not authenticate)
   // runs ahead of this in the route, so req.user is only set when the
   // caller happened to send a valid token. Anonymous submissions still
   // work exactly as before, just with no userId attached.
-  await contactService.create({ ...req.body, userId: req.user?.userId });
+  const data: CreateContactInquiryData = { ...req.body, userId: req.user?.userId };
+  await contactService.create(data);
 
   res.status(201).json({
     message:

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as faqService from "../services/faq.service";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateFaqInput, UpdateFaqInput } from "../validators/faq.validator";
 
 export async function list(_req: Request, res: Response) {

@@ -1,34 +1,53 @@
-import { prisma } from "./prisma";
+import { closeDb, initializeDb, repo } from "./db/data-source";
+import {
+  Article,
+  Category,
+  Faq,
+  PharmacyLocation,
+  Product,
+  Service,
+  SiteSetting,
+  User,
+} from "./db/entities";
+
+// Bulk inserts use save(create(rows)) rather than insert().values(rows): TypeORM
+// still sends it as one multi-row statement, but entity defaults are applied
+// and a field left undefined is omitted instead of being sent as NULL.
 
 async function seedCategories() {
-  if ((await prisma.category.count()) > 0) {
+  const categories = repo(Category);
+  if ((await categories.count()) > 0) {
     console.log("Categories already exist. Skipping.");
     return;
   }
 
-  await prisma.category.createMany({
-    data: [
+  await categories.save(
+    categories.create([
       { name: "Prescription Services", slug: "prescription-services", type: "service" },
       { name: "Wellness Services", slug: "wellness-services", type: "service" },
       { name: "Pain Relief", slug: "pain-relief", type: "product" },
       { name: "Vitamins & Supplements", slug: "vitamins-supplements", type: "product" },
       { name: "Personal Care", slug: "personal-care", type: "product" },
-    ],
-  });
+    ]),
+  );
   console.log("Seeded categories.");
 }
 
 async function seedServices() {
-  if ((await prisma.service.count()) > 0) {
+  const services = repo(Service);
+  if ((await services.count()) > 0) {
     console.log("Services already exist. Skipping.");
     return;
   }
 
-  const prescriptionCategory = await prisma.category.findUnique({ where: { slug: "prescription-services" } });
-  const wellnessCategory = await prisma.category.findUnique({ where: { slug: "wellness-services" } });
+  const categories = repo(Category);
+  const prescriptionCategory = await categories.findOne({
+    where: { slug: "prescription-services" },
+  });
+  const wellnessCategory = await categories.findOne({ where: { slug: "wellness-services" } });
 
-  await prisma.service.createMany({
-    data: [
+  await services.save(
+    services.create([
       {
         name: "Prescription Refills",
         slug: "prescription-refills",
@@ -57,23 +76,25 @@ async function seedServices() {
         keyBenefit: "Walk-in vaccination, no clinic visit required.",
         categoryId: wellnessCategory?.id,
       },
-    ],
-  });
+    ]),
+  );
   console.log("Seeded services.");
 }
 
 async function seedProducts() {
-  if ((await prisma.product.count()) > 0) {
+  const products = repo(Product);
+  if ((await products.count()) > 0) {
     console.log("Products already exist. Skipping.");
     return;
   }
 
-  const painReliefCategory = await prisma.category.findUnique({ where: { slug: "pain-relief" } });
-  const vitaminsCategory = await prisma.category.findUnique({ where: { slug: "vitamins-supplements" } });
-  const personalCareCategory = await prisma.category.findUnique({ where: { slug: "personal-care" } });
+  const categories = repo(Category);
+  const painReliefCategory = await categories.findOne({ where: { slug: "pain-relief" } });
+  const vitaminsCategory = await categories.findOne({ where: { slug: "vitamins-supplements" } });
+  const personalCareCategory = await categories.findOne({ where: { slug: "personal-care" } });
 
-  await prisma.product.createMany({
-    data: [
+  await products.save(
+    products.create([
       {
         name: "Paracetamol 500mg",
         slug: "paracetamol-500mg",
@@ -114,13 +135,14 @@ async function seedProducts() {
         requiresPrescription: true,
         availabilityStatus: "unknown",
       },
-    ],
-  });
+    ]),
+  );
   console.log("Seeded products.");
 }
 
 async function seedFaqs() {
-  if ((await prisma.faq.count()) > 0) {
+  const faqRepository = repo(Faq);
+  if ((await faqRepository.count()) > 0) {
     console.log("FAQs already exist. Skipping.");
     return;
   }
@@ -134,20 +156,21 @@ async function seedFaqs() {
     ["How can I contact the pharmacy?", "Use the Contact Us page, call a branch directly, or reach us on WhatsApp where available."],
   ] as const;
 
-  await prisma.faq.createMany({
-    data: faqs.map(([question, answer], index) => ({ question, answer, displayOrder: index })),
-  });
+  await faqRepository.save(
+    faqRepository.create(faqs.map(([question, answer], index) => ({ question, answer, displayOrder: index }))),
+  );
   console.log("Seeded FAQs.");
 }
 
 async function seedLocations() {
-  if ((await prisma.pharmacyLocation.count()) > 0) {
+  const locations = repo(PharmacyLocation);
+  if ((await locations.count()) > 0) {
     console.log("Locations already exist. Skipping.");
     return;
   }
 
-  await prisma.pharmacyLocation.create({
-    data: {
+  await locations.save(
+    locations.create({
       slug: "ingata-pharmacy-kigali-city-branch",
       branchName: "Ingata Pharmacy - Kigali City Branch",
       address: "KN 4 Ave, Kigali, Rwanda",
@@ -164,19 +187,20 @@ async function seedLocations() {
         sunday: "10:00-14:00",
       },
       availableServices: ["prescription-refills", "medication-counseling", "vaccination-services"],
-    },
-  });
+    }),
+  );
   console.log("Seeded pharmacy locations.");
 }
 
 async function seedSiteSettings() {
-  if ((await prisma.siteSetting.count()) > 0) {
+  const settings = repo(SiteSetting);
+  if ((await settings.count()) > 0) {
     console.log("Site settings already exist. Skipping.");
     return;
   }
 
-  await prisma.siteSetting.create({
-    data: {
+  await settings.save(
+    settings.create({
       pharmacyName: "Ingata Pharmacy",
       aboutUs:
         "Ingata Pharmacy is a customer-focused pharmacy committed to providing trusted pharmaceutical products, professional pharmacy services and reliable health information to the communities we serve.",
@@ -191,26 +215,27 @@ async function seedSiteSettings() {
       phone: "+250788123456",
       email: "info@ingata.example.com",
       address: "KN 4 Ave, Kigali, Rwanda",
-    },
-  });
+    }),
+  );
   console.log("Seeded site settings.");
 }
 
 async function seedArticle() {
-  if ((await prisma.article.count()) > 0) {
+  const articles = repo(Article);
+  if ((await articles.count()) > 0) {
     console.log("Articles already exist. Skipping.");
     return;
   }
 
-  const admin = await prisma.user.findFirst({ where: { role: "admin" } });
+  const admin = await repo(User).findOne({ where: { role: "admin" } });
 
   if (!admin) {
     console.log("No admin user found. Run `npm run seed:admin` first to seed a sample article. Skipping.");
     return;
   }
 
-  await prisma.article.create({
-    data: {
+  await articles.save(
+    articles.create({
       title: "5 Tips for Managing Your Blood Pressure Medication",
       slug: "5-tips-for-managing-your-blood-pressure-medication",
       content:
@@ -222,21 +247,25 @@ async function seedArticle() {
       publishedAt: new Date(),
       metaTitle: "Managing Blood Pressure Medication | Ingata Pharmacy",
       metaDescription: "Practical tips for taking your blood pressure medication safely and consistently.",
-    },
-  });
+    }),
+  );
   console.log("Seeded a sample article.");
 }
 
 async function seedData() {
-  await seedCategories();
-  await seedServices();
-  await seedProducts();
-  await seedFaqs();
-  await seedLocations();
-  await seedSiteSettings();
-  await seedArticle();
+  await initializeDb();
 
-  await prisma.$disconnect();
+  try {
+    await seedCategories();
+    await seedServices();
+    await seedProducts();
+    await seedFaqs();
+    await seedLocations();
+    await seedSiteSettings();
+    await seedArticle();
+  } finally {
+    await closeDb();
+  }
 }
 
 seedData().catch((error) => {

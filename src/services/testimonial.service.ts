@@ -1,26 +1,32 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { Testimonial } from "../db/entities";
+import { deleteOrFail, updateOrFail } from "../db/errors";
+import {
+  CreateTestimonialInput,
+  UpdateTestimonialInput,
+} from "../validators/testimonial.validator";
 
 export async function findPublished() {
-  return prisma.testimonial.findMany({
+  return repo(Testimonial).find({
     where: { isPublished: true },
-    orderBy: { displayOrder: "asc" },
+    order: { displayOrder: "ASC" },
   });
 }
 
 // Unfiltered — includes unpublished testimonials — for the admin dashboard.
 export async function findAll() {
-  return prisma.testimonial.findMany({ orderBy: { displayOrder: "asc" } });
+  return repo(Testimonial).find({ order: { displayOrder: "ASC" } });
 }
 
-export async function create(data: Prisma.TestimonialCreateInput) {
-  return prisma.testimonial.create({ data });
+export async function create(data: CreateTestimonialInput) {
+  const repository = repo(Testimonial);
+  return repository.save(repository.create(data));
 }
 
-export async function update(id: string, data: Prisma.TestimonialUpdateInput) {
-  return prisma.testimonial.update({ where: { id }, data });
+export async function update(id: string, data: UpdateTestimonialInput) {
+  return updateOrFail(repo(Testimonial), id, data);
 }
 
 export async function remove(id: string) {
-  return prisma.testimonial.delete({ where: { id } });
+  await deleteOrFail(repo(Testimonial), id);
 }

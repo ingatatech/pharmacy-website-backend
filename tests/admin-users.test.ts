@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
-import { prisma } from "../src/prisma";
+import { In } from "typeorm";
+import { repo } from "../src/db/data-source";
+import { User } from "../src/db/entities";
 import { loginAsAdmin, loginAsReviewer, registerCustomer } from "./helpers/auth";
 
 const NEW_REVIEWER_EMAIL = "vitest-new-reviewer@ingata.test";
@@ -20,8 +22,8 @@ describe("Admin user management (/api/admin/users)", () => {
   // Clean up anything a test created, so re-running the suite never fails
   // on "email already exists" and never leaves the test database dirty.
   afterEach(async () => {
-    await prisma.user.deleteMany({
-      where: { email: { in: [NEW_REVIEWER_EMAIL, NEW_ADMIN_EMAIL, NEW_CUSTOMER_EMAIL] } },
+    await repo(User).delete({
+      email: In([NEW_REVIEWER_EMAIL, NEW_ADMIN_EMAIL, NEW_CUSTOMER_EMAIL]),
     });
   });
 
@@ -72,9 +74,11 @@ describe("Admin user management (/api/admin/users)", () => {
           role: "pharmacist_reviewer",
         });
 
-      const stored = await prisma.user.findUniqueOrThrow({
+const stored = await repo(User).findOneOrFail({
         where: { id: createResponse.body.id },
-        omit: { passwordHash: false },
+        // Explicit opt-in: the entity marks passwordHash `select: false`, so
+        // reading it back is deliberate rather than the default.
+        select: { id: true, passwordHash: true },
       });
 
       expect(stored.passwordHash).not.toBe(plainPassword);

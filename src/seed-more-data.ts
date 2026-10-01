@@ -1,9 +1,45 @@
-import { prisma } from "./prisma";
+import { ObjectLiteral, Repository } from "typeorm";
+import { closeDb, initializeDb, repo } from "./db/data-source";
+import {
+  Article,
+  Category,
+  PharmacyLocation,
+  Product,
+  Service,
+  User,
+} from "./db/entities";
 
 // Fills gaps left by seed-data.ts (which skips a whole table once it has
 // any rows, so it never reaches a fully-seeded state on its own) — this
-// script upserts by slug instead, so it can be re-run safely and only adds
+// script inserts by slug instead, so it can be re-run safely and only adds
 // what's actually missing. Same placeholder/demo tone as seed-data.ts.
+
+/**
+ * Insert `row` when its slug is free, otherwise apply only `patch` to the
+ * existing row (an empty patch leaves it completely alone).
+ *
+ * This is deliberately not TypeORM's Repository.upsert: that always writes
+ * every column on conflict, which would let a re-run overwrite content that a
+ * human has since edited — the opposite of what these seeds are for. Also
+ * resolves the previous scripts' `createMany` calls, which have no TypeORM
+ * equivalent and would otherwise have to be written out row by row.
+ */
+async function upsertBySlug(
+  repository: Repository<ObjectLiteral>,
+  row: Record<string, unknown>,
+  patch: Record<string, unknown> = {},
+) {
+  const existing = await repository.findOne({ where: { slug: row.slug } });
+
+  if (!existing) {
+    await repository.save(repository.create(row));
+    return;
+  }
+
+  if (Object.keys(patch).length > 0) {
+    await repository.save(repository.merge(existing, patch));
+  }
+}
 
 async function seedCategories() {
   const categories = [
@@ -14,19 +50,19 @@ async function seedCategories() {
     { name: "Personal Care", slug: "personal-care", type: "product" },
   ];
 
+  const repository = repo(Category);
   for (const category of categories) {
-    await prisma.category.upsert({
-      where: { slug: category.slug },
-      update: {},
-      create: category,
-    });
+    await upsertBySlug(repository, category);
   }
   console.log(`Ensured ${categories.length} categories.`);
 }
 
 async function seedServices() {
-  const prescriptionCategory = await prisma.category.findUnique({ where: { slug: "prescription-services" } });
-  const wellnessCategory = await prisma.category.findUnique({ where: { slug: "wellness-services" } });
+  const categories = repo(Category);
+  const prescriptionCategory = await categories.findOne({
+    where: { slug: "prescription-services" },
+  });
+  const wellnessCategory = await categories.findOne({ where: { slug: "wellness-services" } });
 
   const services = [
     {
@@ -80,20 +116,20 @@ async function seedServices() {
     },
   ];
 
+  const repository = repo(Service);
   for (const service of services) {
-    await prisma.service.upsert({
-      where: { slug: service.slug },
-      update: { categoryId: service.categoryId },
-      create: service,
-    });
+    // Only the category is reconciled on re-run, so an edited
+    // shortDescription or keyBenefit is never stamped back over.
+    await upsertBySlug(repository, service, { categoryId: service.categoryId });
   }
   console.log(`Ensured ${services.length} services.`);
 }
 
 async function seedProducts() {
-  const painRelief = await prisma.category.findUnique({ where: { slug: "pain-relief" } });
-  const vitamins = await prisma.category.findUnique({ where: { slug: "vitamins-supplements" } });
-  const personalCare = await prisma.category.findUnique({ where: { slug: "personal-care" } });
+  const categories = repo(Category);
+  const painRelief = await categories.findOne({ where: { slug: "pain-relief" } });
+  const vitamins = await categories.findOne({ where: { slug: "vitamins-supplements" } });
+  const personalCare = await categories.findOne({ where: { slug: "personal-care" } });
 
   const products = [
     {
@@ -200,19 +236,17 @@ async function seedProducts() {
     },
   ];
 
+  const repository = repo(Product);
   for (const product of products) {
     const { slug, ...data } = product;
-    await prisma.product.upsert({
-      where: { slug },
-      update: { categoryId: data.categoryId },
-      create: { slug, ...data },
-    });
+    await upsertBySlug(repository, { slug, ...data }, { categoryId: data.categoryId });
   }
   console.log(`Ensured ${products.length} products.`);
 }
 
 async function seedLocations() {
-  const existing = await prisma.pharmacyLocation.findMany({ select: { branchName: true } });
+  const repository = repo(PharmacyLocation);
+  const existing = await repository.find({ select: { branchName: true } });
   const existingNames = new Set(existing.map((location) => location.branchName));
 
   const locations = [
@@ -275,14 +309,14 @@ async function seedLocations() {
   let created = 0;
   for (const location of locations) {
     if (existingNames.has(location.branchName)) continue;
-    await prisma.pharmacyLocation.create({ data: location });
+    await repository.save(repository.create(location));
     created += 1;
   }
   console.log(`Added ${created} new pharmacy locations (${locations.length - created} already existed).`);
 }
 
 async function seedArticles() {
-  const admin = await prisma.user.findFirst({ where: { role: "admin" } });
+  const admin = await repo(User).findOne({ where: { role: "admin" } });
   if (!admin) {
     console.log("No admin user found. Run `npm run seed:admin` first. Skipping articles.");
     return;
@@ -330,31 +364,36 @@ async function seedArticles() {
     },
   ];
 
+  const repository = repo(Article);
   let created = 0;
   for (const article of articles) {
-    const exists = await prisma.article.findUnique({ where: { slug: article.slug } });
+    const exists = await repository.findOne({ where: { slug: article.slug } });
     if (exists) continue;
-    await prisma.article.create({
-      data: {
+    await repository.save(
+      repository.create({
         ...article,
         authorId: admin.id,
         status: "published",
         metaTitle: `${article.title} | Ingata Pharmacy`,
-      },
-    });
+      }),
+    );
     created += 1;
   }
   console.log(`Added ${created} new articles (${articles.length - created} already existed).`);
 }
 
 async function seedMoreData() {
-  await seedCategories();
-  await seedServices();
-  await seedProducts();
-  await seedLocations();
-  await seedArticles();
+  await initializeDb();
 
-  await prisma.$disconnect();
+  try {
+    await seedCategories();
+    await seedServices();
+    await seedProducts();
+    await seedLocations();
+    await seedArticles();
+  } finally {
+    await closeDb();
+  }
 }
 
 seedMoreData().catch((error) => {

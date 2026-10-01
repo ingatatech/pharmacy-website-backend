@@ -1,7 +1,8 @@
 import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
-import { prisma } from "../src/prisma";
+import { repo } from "../src/db/data-source";
+import { User } from "../src/db/entities";
 import { TEST_ADMIN } from "./helpers/fixtures";
 import { loginAsAdmin } from "./helpers/auth";
 
@@ -9,7 +10,7 @@ const NEW_CUSTOMER_EMAIL = "vitest-new-customer@ingata.test";
 
 describe("POST /api/auth/register", () => {
   afterEach(async () => {
-    await prisma.user.deleteMany({ where: { email: NEW_CUSTOMER_EMAIL } });
+    await repo(User).delete({ email: NEW_CUSTOMER_EMAIL });
   });
 
   it("creates a customer account and returns a token, without being asked to", async () => {
@@ -36,9 +37,12 @@ describe("POST /api/auth/register", () => {
       password: plainPassword,
     });
 
-    const stored = await prisma.user.findUniqueOrThrow({
+    // passwordHash is `select: false` on the entity, so reading it back for this
+    // assertion is an explicit opt-in — which is itself part of what this test
+    // proves: the column is not handed out by default, only when asked for.
+    const stored = await repo(User).findOneOrFail({
       where: { id: createResponse.body.user.id },
-      omit: { passwordHash: false },
+      select: { id: true, passwordHash: true },
     });
 
     expect(stored.passwordHash).not.toBe(plainPassword);

@@ -2,7 +2,16 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import bcrypt from "bcrypt";
 import { app } from "../src/app";
-import { prisma } from "../src/prisma";
+import { In } from "typeorm";
+import { repo } from "../src/db/data-source";
+import {
+  AuditLog,
+  ContactInquiry,
+  PharmacyLocation,
+  RefillRequest,
+  TeamMember,
+  User,
+} from "../src/db/entities";
 import { loginAsAdmin, registerCustomer } from "./helpers/auth";
 
 /**
@@ -39,15 +48,16 @@ const PASSWORD = "pharmacist-password123";
 
 /** Creates a pharmacist directly in the database and returns a login token. */
 async function createPharmacist(email: string, locationId: string | null) {
-  await prisma.user.create({
-    data: {
+  const users = repo(User);
+  await users.save(
+    users.create({
       email,
       passwordHash: await bcrypt.hash(PASSWORD, 10),
       fullName: `Pharmacist ${email}`,
       role: "pharmacist_reviewer",
       locationId,
-    },
-  });
+    }),
+  );
 
   const response = await request(app).post("/api/auth/login").send({ email, password: PASSWORD });
   expect(response.status).toBe(200);
@@ -70,8 +80,9 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
   beforeAll(async () => {
     adminToken = await loginAsAdmin();
 
-    branchA = await prisma.pharmacyLocation.create({ data: BRANCH_A, select: { id: true } });
-    branchB = await prisma.pharmacyLocation.create({ data: BRANCH_B, select: { id: true } });
+    const branches = repo(PharmacyLocation);
+    branchA = await branches.save(branches.create(BRANCH_A));
+    branchB = await branches.save(branches.create(BRANCH_B));
 
     alice = await createPharmacist("vitest-alice@ingata.test", branchA.id);
     bob = await createPharmacist("vitest-bob@ingata.test", branchB.id);
@@ -85,15 +96,15 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
   /** A self-registered account, exactly as the public signup form produces. */
   async function createCustomer(email: string) {
     const password = "applicant-password123";
-    const user = await prisma.user.create({
-      data: {
+    const users = repo(User);
+    const user = await users.save(
+      users.create({
         email,
         passwordHash: await bcrypt.hash(password, 10),
         fullName: "Branch Applicant",
         role: "customer",
-      },
-      select: { id: true },
-    });
+      }),
+    );
     return { id: user.id, password };
   }
 
@@ -102,26 +113,29 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
   afterAll(async () => {
     const userIds = [alice.id, bob.id, unassigned.id, applicant.id];
 
-    await prisma.auditLog.deleteMany({ where: { actorId: { in: userIds } } });
-    await prisma.refillRequest.deleteMany({
-      where: { fullName: { in: ["Alice Patient", "Bob Patient", "Legacy Patient"] } },
+    await repo(AuditLog).delete({ actorId: In(userIds) });
+    await repo(RefillRequest).delete({
+      fullName: In(["Alice Patient", "Bob Patient", "Legacy Patient"]),
     });
-    await prisma.contactInquiry.deleteMany({ where: { fullName: { in: ["Alice Enquirer", "Bob Enquirer"] } } });
-    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
-    await prisma.pharmacyLocation.deleteMany({ where: { id: { in: [branchA.id, branchB.id] } } });
+    await repo(ContactInquiry).delete({
+      fullName: In(["Alice Enquirer", "Bob Enquirer"]),
+    });
+    await repo(User).delete({ id: In(userIds) });
+    await repo(PharmacyLocation).delete({ id: In([branchA.id, branchB.id]) });
   });
 
   /** Creates a refill request for a branch, bypassing the public limiter. */
   async function createRefill(fullName: string, locationId: string | null, preferredBranch: string) {
-    return prisma.refillRequest.create({
-      data: {
+    const refills = repo(RefillRequest);
+    return refills.save(
+      refills.create({
         fullName,
         phoneNumber: "+250700000099",
         medicationName: "TestMed",
         preferredBranch,
         locationId,
-      },
-    });
+      }),
+    );
   }
 
   describe("authentication and role boundary", () => {
@@ -148,7 +162,7 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
 
       expect(response.status).toBe(403);
 
-      await prisma.user.delete({ where: { id: customer.id } }).catch(() => undefined);
+      await repo(User).delete(customer.id).catch(() => undefined);
     });
   });
 
@@ -244,7 +258,7 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
       // somewhere, leaking another branch's activity.
       expect(response.status).toBe(404);
 
-      const unchanged = await prisma.refillRequest.findUniqueOrThrow({ where: { id: bobRefill.id } });
+      const unchanged = await repo(RefillRequest).findOneOrFail({ where: { id: bobRefill.id } });
       expect(unchanged.status).toBe("submitted");
     });
 
@@ -262,24 +276,25 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
 
   describe("branch isolation for contact inquiries", () => {
     it("only lists and updates inquiries on the caller's own branch", async () => {
-      await prisma.contactInquiry.create({
-        data: {
+      const inquiries = repo(ContactInquiry);
+      await inquiries.save(
+        inquiries.create({
           fullName: "Alice Enquirer",
           phoneNumber: "+250700000001",
           email: "alice@ingata.test",
           message: "hello",
           locationId: branchA.id,
-        },
-      });
-      const bobInquiry = await prisma.contactInquiry.create({
-        data: {
+        }),
+      );
+      const bobInquiry = await inquiries.save(
+        inquiries.create({
           fullName: "Bob Enquirer",
           phoneNumber: "+250700000002",
           email: "bob@ingata.test",
           message: "hello",
           locationId: branchB.id,
-        },
-      });
+        }),
+      );
 
       const list = await request(app)
         .get("/api/pharmacist/inquiries")
@@ -303,12 +318,13 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
 
   describe("GET /api/pharmacist/branch/team", () => {
     it("lists colleagues assigned to the same branch, and nobody else's", async () => {
-      await prisma.teamMember.create({
-        data: { fullName: "Alice Colleague", role: "Technician", locationId: branchA.id },
-      });
-      await prisma.teamMember.create({
-        data: { fullName: "Bob Colleague", role: "Technician", locationId: branchB.id },
-      });
+      const team = repo(TeamMember);
+      await team.save(
+        team.create({ fullName: "Alice Colleague", role: "Technician", locationId: branchA.id }),
+      );
+      await team.save(
+        team.create({ fullName: "Bob Colleague", role: "Technician", locationId: branchB.id }),
+      );
 
       const response = await request(app)
         .get("/api/pharmacist/branch/team")
@@ -317,8 +333,8 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
       expect(response.status).toBe(200);
       expect(response.body.team.map((m: { fullName: string }) => m.fullName)).toEqual(["Alice Colleague"]);
 
-      await prisma.teamMember.deleteMany({
-        where: { fullName: { in: ["Alice Colleague", "Bob Colleague"] } },
+      await repo(TeamMember).delete({
+        fullName: In(["Alice Colleague", "Bob Colleague"]),
       });
     });
   });
@@ -350,7 +366,7 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
       }
 
       // The rejected attempts must not have changed anything.
-      const branch = await prisma.pharmacyLocation.findUniqueOrThrow({ where: { id: branchA.id } });
+      const branch = await repo(PharmacyLocation).findOneOrFail({ where: { id: branchA.id } });
       expect(branch.slug).toBe(BRANCH_A.slug);
       expect(branch.isActive).toBe(true);
       expect(branch.availableServices).toEqual(BRANCH_A.availableServices);
@@ -394,7 +410,7 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
       // locationId isn't in the pharmacist schema at all, so it's refused.
       expect(response.status).toBe(400);
 
-      const bobBranch = await prisma.pharmacyLocation.findUniqueOrThrow({ where: { id: branchB.id } });
+      const bobBranch = await repo(PharmacyLocation).findOneOrFail({ where: { id: branchB.id } });
       expect(bobBranch.branchName).toBe(BRANCH_B.branchName);
     });
   });
@@ -433,7 +449,7 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
     });
 
     it("succeeds once the pharmacist is reassigned away", async () => {
-      await prisma.user.update({ where: { id: alice.id }, data: { locationId: null } });
+      await repo(User).update(alice.id, { locationId: null });
 
       const response = await request(app)
         .delete(`/api/locations/${branchA.id}`)
@@ -441,8 +457,8 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
 
       expect(response.status).toBe(204);
       // Recreate it so the afterAll cleanup stays simple.
-      branchA = await prisma.pharmacyLocation.create({ data: BRANCH_A, select: { id: true } });
-      await prisma.user.update({ where: { id: alice.id }, data: { locationId: branchA.id } });
+      branchA = await repo(PharmacyLocation).save(repo(PharmacyLocation).create(BRANCH_A));
+      await repo(User).update(alice.id, { locationId: branchA.id });
     });
   });
 
@@ -530,7 +546,7 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
       // Cleared without the admin having to remember to send locationId: null.
       expect(response.body.locationId).toBeNull();
 
-      const stored = await prisma.user.findUniqueOrThrow({ where: { id: applicant.id } });
+      const stored = await repo(User).findOneOrFail({ where: { id: applicant.id } });
       expect(stored.locationId).toBeNull();
     });
 
@@ -558,7 +574,7 @@ describe("Pharmacist branch area (/api/pharmacist)", () => {
 
       expect(response.status).toBe(403);
 
-      const stored = await prisma.user.findUniqueOrThrow({ where: { id: applicant.id } });
+      const stored = await repo(User).findOneOrFail({ where: { id: applicant.id } });
       expect(stored.role).toBe("customer");
     });
   });

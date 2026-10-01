@@ -27,5 +27,11 @@ export default function globalSetup() {
   }
 
   console.log("Applying migrations to the test database...");
-  execSync("npx prisma migrate deploy", { stdio: "inherit", env: process.env });
+  // Run in a child process rather than importing AppDataSource here: this file
+  // is loaded as ESM by Vitest, and TypeORM is CommonJS, so a named-import
+  // failure there would take the whole run down. The child gets DATABASE_URL
+  // through `env`, and dotenv.config() inside data-source does not override
+  // variables that are already set — so the test database wins over any
+  // DATABASE_URL in a local .env.
+  execSync("npm run db:migrate", { stdio: "inherit", env: process.env });
 }

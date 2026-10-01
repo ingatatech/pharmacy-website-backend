@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as categoryService from "../services/category.service";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CategoryType } from "../types";
 import { CreateCategoryInput, UpdateCategoryInput } from "../validators/category.validator";
 

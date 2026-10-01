@@ -1,11 +1,19 @@
 import { Request, Response } from "express";
 import * as refillService from "../services/refill.service";
 import { parsePagination, setTotalCountHeader } from "../utils/pagination";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateRefillRequestInput, UpdateRefillRequestInput } from "../validators/refill.validator";
+import { CreateRefillRequestData } from "../services/refill.service";
 
 export async function create(req: Request<{}, unknown, CreateRefillRequestInput>, res: Response) {
-  await refillService.create({ ...req.body, status: "submitted", userId: req.user?.userId });
+  // status/userId are server-owned: every new request starts as "submitted",
+  // and userId is only present when optionalAuthenticate saw a valid token.
+  const data: CreateRefillRequestData = {
+    ...req.body,
+    status: "submitted",
+    userId: req.user?.userId,
+  };
+  await refillService.create(data);
 
   res.status(201).json({
     message:

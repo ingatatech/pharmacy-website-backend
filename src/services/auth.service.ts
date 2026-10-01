@@ -1,8 +1,10 @@
 import bcrypt from "bcrypt";
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { User } from "../db/entities";
 import { signToken } from "../utils/jwt";
-import * as userService from "./user.service";
 import { RegisterInput } from "../validators/auth.validator";
+import * as userService from "./user.service";
+import { USER_READ, USER_SELECT } from "./user.service";
 
 export async function register(input: RegisterInput) {
   // Role is hardcoded here, not read from `input` — registerSchema doesn't
@@ -14,13 +16,13 @@ export async function register(input: RegisterInput) {
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({
+  const user = await repo(User).findOne({
     where: { email },
-    // passwordHash is re-included here purely so bcrypt.compare can run; it is
-    // never sent to a client, because toPublicUser() in the controller
-    // whitelists the fields it returns rather than passing the row through.
-    omit: { passwordHash: false },
-    include: { location: { select: { id: true, branchName: true, slug: true } } },
+    // passwordHash has `select: false` on the entity, so it has to be asked for
+    // explicitly here — the only place that legitimately needs it, purely so
+    // bcrypt.compare can run. It never reaches a client: toPublicUser() in the
+    // controller whitelists the fields it returns.
+    select: { ...USER_SELECT, passwordHash: true },
   });
 
   if (!user) {
@@ -37,8 +39,5 @@ export async function login(email: string, password: string) {
 }
 
 export async function getUserById(id: string) {
-  return prisma.user.findUnique({
-    where: { id },
-    include: { location: { select: { id: true, branchName: true, slug: true } } },
-  });
+  return repo(User).findOne({ ...USER_READ, where: { id } });
 }

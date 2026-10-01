@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
-import { prisma } from "../src/prisma";
+import { repo } from "../src/db/data-source";
+import { Category, Product } from "../src/db/entities";
 
 const TEST_CATEGORY_SLUG = "vitest-test-range";
 
@@ -12,11 +13,13 @@ describe("Products", () => {
   const expectedNewestFirst: string[] = [];
 
   beforeAll(async () => {
-    await prisma.category.deleteMany({ where: { slug: TEST_CATEGORY_SLUG } });
+    const categories = repo(Category);
+    const products = repo(Product);
+    await categories.delete({ slug: TEST_CATEGORY_SLUG });
 
-    const category = await prisma.category.create({
-      data: { name: "Vitest Range", slug: TEST_CATEGORY_SLUG, type: "product" },
-    });
+    const category = await categories.save(
+      categories.create({ name: "Vitest Range", slug: TEST_CATEGORY_SLUG, type: "product" }),
+    );
     categoryId = category.id;
 
     const base = Date.UTC(2020, 0, 1);
@@ -33,15 +36,15 @@ describe("Products", () => {
       // opposite of what the endpoint should return. Without an orderBy that
       // reversal is what the test would see, so it can only pass on merit.
       [...fixtures].reverse().map((f) =>
-        prisma.product.create({
-          data: {
+        products.save(
+          products.create({
             name: f.name,
             slug: f.slug,
             isPublished: f.published,
             categoryId,
             createdAt: new Date(base + f.offsetDays * 86_400_000),
-          },
-        }),
+          }),
+        ),
       ),
     );
 
@@ -54,8 +57,8 @@ describe("Products", () => {
   });
 
   afterAll(async () => {
-    await prisma.product.deleteMany({ where: { categoryId } });
-    await prisma.category.deleteMany({ where: { id: categoryId } });
+    await repo(Product).delete({ categoryId });
+    await repo(Category).delete({ id: categoryId });
   });
 
   describe("GET /api/products", () => {

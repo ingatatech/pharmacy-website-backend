@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
-import { prisma } from "../src/prisma";
+import { In } from "typeorm";
+import { repo } from "../src/db/data-source";
+import { RefillRequest, User } from "../src/db/entities";
 import { loginAsAdmin, registerCustomer } from "./helpers/auth";
 
 const ANON_PHONE = "0788111000";
@@ -10,8 +12,8 @@ const CUSTOMER_EMAIL = "vitest-refill-customer@ingata.test";
 
 describe("Prescription refill requests", () => {
   afterEach(async () => {
-    await prisma.refillRequest.deleteMany({ where: { phoneNumber: { in: [ANON_PHONE, LINKED_PHONE] } } });
-    await prisma.user.deleteMany({ where: { email: CUSTOMER_EMAIL } });
+    await repo(RefillRequest).delete({ phoneNumber: In([ANON_PHONE, LINKED_PHONE]) });
+    await repo(User).delete({ email: CUSTOMER_EMAIL });
   });
 
   describe("POST /api/prescription-refill", () => {
@@ -22,7 +24,7 @@ describe("Prescription refill requests", () => {
 
       expect(response.status).toBe(201);
 
-      const stored = await prisma.refillRequest.findFirstOrThrow({ where: { phoneNumber: ANON_PHONE } });
+      const stored = await repo(RefillRequest).findOneOrFail({ where: { phoneNumber: ANON_PHONE } });
       expect(stored.userId).toBeNull();
     });
 
@@ -36,7 +38,7 @@ describe("Prescription refill requests", () => {
 
       expect(response.status).toBe(201);
 
-      const stored = await prisma.refillRequest.findFirstOrThrow({ where: { phoneNumber: LINKED_PHONE } });
+      const stored = await repo(RefillRequest).findOneOrFail({ where: { phoneNumber: LINKED_PHONE } });
       expect(stored.userId).toBe(customer.id);
     });
   });

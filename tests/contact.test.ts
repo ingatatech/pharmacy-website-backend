@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
-import { prisma } from "../src/prisma";
+import { In } from "typeorm";
+import { repo } from "../src/db/data-source";
+import { ContactInquiry, User } from "../src/db/entities";
 import { loginAsAdmin, registerCustomer } from "./helpers/auth";
 
 const ANON_EMAIL = "vitest-anon-contact@ingata.test";
@@ -10,8 +12,8 @@ const CUSTOMER_EMAIL = "vitest-contact-customer@ingata.test";
 
 describe("Contact inquiries", () => {
   afterEach(async () => {
-    await prisma.contactInquiry.deleteMany({ where: { email: { in: [ANON_EMAIL, LINKED_EMAIL] } } });
-    await prisma.user.deleteMany({ where: { email: CUSTOMER_EMAIL } });
+    await repo(ContactInquiry).delete({ email: In([ANON_EMAIL, LINKED_EMAIL]) });
+    await repo(User).delete({ email: CUSTOMER_EMAIL });
   });
 
   describe("POST /api/contact", () => {
@@ -25,7 +27,7 @@ describe("Contact inquiries", () => {
 
       expect(response.status).toBe(201);
 
-      const stored = await prisma.contactInquiry.findFirstOrThrow({ where: { email: ANON_EMAIL } });
+      const stored = await repo(ContactInquiry).findOneOrFail({ where: { email: ANON_EMAIL } });
       expect(stored.userId).toBeNull();
     });
 
@@ -44,7 +46,7 @@ describe("Contact inquiries", () => {
 
       expect(response.status).toBe(201);
 
-      const stored = await prisma.contactInquiry.findFirstOrThrow({ where: { email: LINKED_EMAIL } });
+      const stored = await repo(ContactInquiry).findOneOrFail({ where: { email: LINKED_EMAIL } });
       expect(stored.userId).toBe(customer.id);
     });
 
@@ -61,7 +63,7 @@ describe("Contact inquiries", () => {
 
       expect(response.status).toBe(201);
 
-      const stored = await prisma.contactInquiry.findFirstOrThrow({ where: { email: ANON_EMAIL } });
+      const stored = await repo(ContactInquiry).findOneOrFail({ where: { email: ANON_EMAIL } });
       expect(stored.userId).toBeNull();
     });
   });

@@ -1,4 +1,5 @@
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { ContactInquiry, RefillRequest, TeamMember, User } from "../db/entities";
 import { PaginationOptions } from "../utils/pagination";
 import { UpdateRefillRequestInput } from "../validators/refill.validator";
 import { UpdateContactInquiryInput } from "../validators/contact.validator";
@@ -20,18 +21,18 @@ import { UpdateContactInquiryInput } from "../validators/contact.validator";
  * "unassigned" state rather than an error or, worse, an unscoped result set.
  */
 export async function findBranchForUser(userId: string) {
-  const user = await prisma.user.findUnique({
+  const user = await repo(User).findOne({
     where: { id: userId },
-    select: { locationId: true, location: true },
+    relations: { location: true },
   });
 
   return user?.location ?? null;
 }
 
 export async function findTeamForBranch(locationId: string) {
-  return prisma.teamMember.findMany({
+  return repo(TeamMember).find({
     where: { locationId },
-    orderBy: { displayOrder: "asc" },
+    order: { displayOrder: "ASC" },
   });
 }
 
@@ -39,53 +40,72 @@ export async function findTeamForBranch(locationId: string) {
 // after the fetch. That is what makes the update endpoints safe: a pharmacist
 // who PATCHes a request id belonging to another branch matches no row and gets
 // 404, instead of being able to reach it by guessing ids.
+//
+// The two update helpers below deliberately return null rather than throwing
+// NotFoundError: their controller distinguishes "belongs to another branch"
+// from "no branch assigned" with different response bodies, and both are 404s.
+// Changing this to a throw would make the global handler own the body instead.
 
-export async function findRefillsForBranch(locationId: string, pagination: PaginationOptions) {
+export async function findRefillsForBranch(
+  locationId: string,
+  pagination: PaginationOptions,
+) {
+  const where = { locationId };
+
   return Promise.all([
-    prisma.refillRequest.findMany({
-      where: { locationId },
-      orderBy: { createdAt: "desc" },
-      ...pagination,
+    repo(RefillRequest).find({
+      where,
+      order: { createdAt: "DESC" },
+      take: pagination.take,
+      skip: pagination.skip,
     }),
-    prisma.refillRequest.count({ where: { locationId } }),
+    repo(RefillRequest).count({ where }),
   ]);
 }
 
 export async function updateRefillForBranch(
   id: string,
   locationId: string,
-  data: UpdateRefillRequestInput
+  data: UpdateRefillRequestInput,
 ) {
-  const existing = await prisma.refillRequest.findFirst({ where: { id, locationId } });
+  const repository = repo(RefillRequest);
+  const existing = await repository.findOne({ where: { id, locationId } });
 
   if (!existing) {
     return null;
   }
 
-  return prisma.refillRequest.update({ where: { id }, data });
+  return repository.save(repository.merge(existing, data));
 }
 
-export async function findInquiriesForBranch(locationId: string, pagination: PaginationOptions) {
+export async function findInquiriesForBranch(
+  locationId: string,
+  pagination: PaginationOptions,
+) {
+  const where = { locationId };
+
   return Promise.all([
-    prisma.contactInquiry.findMany({
-      where: { locationId },
-      orderBy: { createdAt: "desc" },
-      ...pagination,
+    repo(ContactInquiry).find({
+      where,
+      order: { createdAt: "DESC" },
+      take: pagination.take,
+      skip: pagination.skip,
     }),
-    prisma.contactInquiry.count({ where: { locationId } }),
+    repo(ContactInquiry).count({ where }),
   ]);
 }
 
 export async function updateInquiryForBranch(
   id: string,
   locationId: string,
-  data: UpdateContactInquiryInput
+  data: UpdateContactInquiryInput,
 ) {
-  const existing = await prisma.contactInquiry.findFirst({ where: { id, locationId } });
+  const repository = repo(ContactInquiry);
+  const existing = await repository.findOne({ where: { id, locationId } });
 
   if (!existing) {
     return null;
   }
 
-  return prisma.contactInquiry.update({ where: { id }, data });
+  return repository.save(repository.merge(existing, data));
 }

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as testimonialService from "../services/testimonial.service";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateTestimonialInput, UpdateTestimonialInput } from "../validators/testimonial.validator";
 
 export async function list(_req: Request, res: Response) {

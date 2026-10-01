@@ -1,13 +1,9 @@
-import * as dotenv from "dotenv";
-dotenv.config();
-
 import { app } from "./app";
-import { prisma } from "./prisma";
+import { initializeDb } from "./db/data-source";
 
 const port = process.env.PORT || 4000;
 
-prisma
-  .$connect()
+initializeDb()
   .then(() => {
     console.log("Database connection established");
     app.listen(port, () => {
@@ -17,4 +13,5 @@ prisma
   })
   .catch((error) => {
     console.error("Error connecting to the database:", error);
+    process.exit(1);
   });

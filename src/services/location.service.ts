@@ -1,39 +1,29 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
-import { CreateLocationInput, UpdateLocationInput } from "../validators/location.validator";
-
-// Prisma requires the Prisma.JsonNull sentinel (not plain `null`) to store an
-// actual JSON null in a nullable Json column, so translate the validated
-// input's `null` into it here, at the Prisma boundary.
-function toJsonInput(openingHours: CreateLocationInput["openingHours"]) {
-  if (openingHours === null) {
-    return Prisma.JsonNull;
-  }
-  return openingHours;
-}
+import { repo } from "../db/data-source";
+import { PharmacyLocation } from "../db/entities";
+import { deleteOrFail, updateOrFail } from "../db/errors";
+import {
+  CreateLocationInput,
+  UpdateLocationInput,
+} from "../validators/location.validator";
 
 export async function findActive() {
-  return prisma.pharmacyLocation.findMany({ where: { isActive: true } });
+  return repo(PharmacyLocation).find({ where: { isActive: true } });
 }
 
 // Unfiltered — includes inactive branches — for the admin dashboard.
 export async function findAll() {
-  return prisma.pharmacyLocation.findMany({ orderBy: { branchName: "asc" } });
+  return repo(PharmacyLocation).find({ order: { branchName: "ASC" } });
 }
 
 export async function create(data: CreateLocationInput) {
-  return prisma.pharmacyLocation.create({
-    data: { ...data, openingHours: toJsonInput(data.openingHours) },
-  });
+  const repository = repo(PharmacyLocation);
+  return repository.save(repository.create(data));
 }
 
 export async function update(id: string, data: UpdateLocationInput) {
-  return prisma.pharmacyLocation.update({
-    where: { id },
-    data: { ...data, openingHours: toJsonInput(data.openingHours) },
-  });
+  return updateOrFail(repo(PharmacyLocation), id, data);
 }
 
 export async function remove(id: string) {
-  return prisma.pharmacyLocation.delete({ where: { id } });
+  await deleteOrFail(repo(PharmacyLocation), id);
 }

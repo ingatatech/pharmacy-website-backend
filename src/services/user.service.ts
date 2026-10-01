@@ -1,5 +1,7 @@
 import bcrypt from "bcrypt";
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { User } from "../db/entities";
+import { deleteOrFail, updateOrFail } from "../db/errors";
 import { CreateUserInput, UpdateUserInput } from "../validators/user.validator";
 
 const SALT_ROUNDS = 10;
@@ -16,16 +18,33 @@ function resolveLocationId(role: string, locationId: string | null | undefined) 
   return locationId ?? null;
 }
 
-// The branch summary embedded on every user response. Deliberately narrow —
-// id/branchName/slug is all either the admin Pharmacists table or the
-// pharmacist's own header needs, and the full PharmacyLocation row (address,
-// hours, coordinates) is fetched separately when actually needed.
-//
-// Written out at each call site rather than shared through a typed constant:
-// this Prisma version's `Prisma.UserInclude` is a generic type, and referring
-// to it without type arguments resolves every relation to `never`, which then
-// fails to type-check against a real `include`. The repetition is the price of
-// that; a shared const is not.
+/**
+ * @see USER_READ — always read users through this, never USER_SELECT alone.
+ */
+export const USER_SELECT = {
+  id: true,
+  email: true,
+  fullName: true,
+  role: true,
+  createdAt: true,
+  locationId: true,
+  location: { id: true, branchName: true, slug: true },
+} as const;
+
+/**
+ * The read options every user-facing query must use.
+ *
+ * `relations` is not optional and is not redundant with the nested `select`
+ * above: in TypeORM a relation listed only inside `select` prunes its columns
+ * but never issues the JOIN, so the relation comes back missing from the
+ * result entirely. Naming both together makes that mistake unmakeable. The
+ * nested `select` still does its job — it narrows the joined row to
+ * id/branchName/slug rather than the branch's address, hours and coordinates.
+ */
+export const USER_READ = {
+  select: USER_SELECT,
+  relations: { location: true },
+} as const;
 
 /**
  * @param role when given, restricts the result to that one role. The admin
@@ -33,61 +52,64 @@ function resolveLocationId(role: string, locationId: string | null | undefined) 
  * of the mixed admin/reviewer/customer list the Users page shows.
  */
 export async function findAll(role?: string) {
-  return prisma.user.findMany({
-    include: { location: { select: { id: true, branchName: true, slug: true } } },
-    where: role ? { role } : undefined,
-    orderBy: { createdAt: "desc" },
+  return repo(User).find({
+    ...USER_READ,
+    where: role ? { role } : {},
+    order: { createdAt: "DESC" },
   });
 }
 
 export async function findById(id: string) {
-  return prisma.user.findUnique({
-    where: { id },
-    include: { location: { select: { id: true, branchName: true, slug: true } } },
-  });
+  return repo(User).findOne({ ...USER_READ, where: { id } });
 }
 
 export async function create(data: CreateUserInput) {
+  const repository = repo(User);
   const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
 
-  return prisma.user.create({
-    data: {
+  const saved = await repository.save(
+    repository.create({
       fullName: data.fullName,
       email: data.email,
       role: data.role,
       locationId: resolveLocationId(data.role, data.locationId),
       passwordHash,
-    },
-    include: { location: { select: { id: true, branchName: true, slug: true } } },
-  });
+    }),
+  );
+
+  // Re-read through USER_READ so the response carries the branch summary and
+  // omits the hash, exactly as the old `create({ include })` did.
+  return repository.findOneOrFail({ ...USER_READ, where: { id: saved.id } });
 }
 
 export async function update(id: string, data: UpdateUserInput) {
+  const repository = repo(User);
   const { password, ...rest } = data;
 
   // Read first so the branch rule can use the *effective* role. Without this,
   // sending { locationId } on its own to an account that isn't a pharmacist
   // would store a branch that no query would ever read, and demoting someone
   // without restating their branch would silently keep it.
-  const existing = await prisma.user.findUniqueOrThrow({ where: { id }, select: { role: true } });
+  const existing = await repository.findOneOrFail({ where: { id }, select: { role: true } });
   const effectiveRole = data.role ?? existing.role;
 
-  return prisma.user.update({
-    where: { id },
-    data: {
-      ...rest,
-      // Spelled out rather than left in `...rest` so that omitting the key
-      // means "leave the branch alone", while an explicit null (which the
-      // validator allows) clears it.
-      ...(data.locationId !== undefined || !BRANCH_ROLES.has(effectiveRole)
-        ? { locationId: resolveLocationId(effectiveRole, data.locationId) }
-        : {}),
-      ...(password ? { passwordHash: await bcrypt.hash(password, SALT_ROUNDS) } : {}),
-    },
-    include: { location: { select: { id: true, branchName: true, slug: true } } },
+  await updateOrFail(repository, id, {
+    ...rest,
+    // Spelled out rather than left in `...rest` so that omitting the key
+    // means "leave the branch alone", while an explicit null (which the
+    // validator allows) clears it.
+    ...(data.locationId !== undefined || !BRANCH_ROLES.has(effectiveRole)
+      ? { locationId: resolveLocationId(effectiveRole, data.locationId) }
+      : {}),
+    ...(password ? { passwordHash: await bcrypt.hash(password, SALT_ROUNDS) } : {}),
   });
+
+  // Re-read rather than trusting update()'s return value: an
+  // UPDATE ... RETURNING only gives back the columns it wrote, so the
+  // `location` branch summary would be missing from the response.
+  return repository.findOneOrFail({ ...USER_READ, where: { id } });
 }
 
 export async function remove(id: string) {
-  return prisma.user.delete({ where: { id } });
+  await deleteOrFail(repo(User), id);
 }

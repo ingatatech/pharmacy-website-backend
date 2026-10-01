@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import * as userService from "../services/user.service";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateUserInput, UpdateUserInput } from "../validators/user.validator";
 
-// prisma.ts's global `omit: { user: { passwordHash: true } }` already keeps
-// passwordHash out of everything these calls return, so there is nothing
-// extra to strip here before sending the response.
+// No stripping is needed before sending a response: passwordHash is marked
+// `select: false` on the User entity, so userService never returns it at all.
+// See src/db/entities/user.entity.ts.
 
 export async function list(req: Request, res: Response) {
   // ?role=pharmacist_reviewer backs the admin Pharmacists page. Anything else

@@ -1,28 +1,48 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { RefillRequest } from "../db/entities";
+import { updateOrFail } from "../db/errors";
 import { PaginationOptions } from "../utils/pagination";
+import {
+  CreateRefillRequestInput,
+  UpdateRefillRequestInput,
+} from "../validators/refill.validator";
 
-export async function create(data: Prisma.RefillRequestUncheckedCreateInput) {
-  return prisma.refillRequest.create({ data });
+/**
+ * The validated HTTP body plus the two fields the server owns.
+ *
+ * `status` is absent from createRefillRequestSchema (which is strict) because a
+ * new request is always "submitted" regardless of what a client sends; only the
+ * admin update path may change it. `userId` comes from the optional-authenticated
+ * req.user and is undefined for anonymous submissions, stored as SQL NULL.
+ */
+export type CreateRefillRequestData = CreateRefillRequestInput & {
+  status: "submitted";
+  userId?: string | null;
+};
+
+export async function create(data: CreateRefillRequestData) {
+  const repository = repo(RefillRequest);
+  return repository.save(repository.create(data));
 }
 
 export async function findAll(pagination: PaginationOptions) {
   return Promise.all([
-    prisma.refillRequest.findMany({
-      orderBy: { createdAt: "desc" },
-      ...pagination,
+    repo(RefillRequest).find({
+      order: { createdAt: "DESC" },
+      take: pagination.take,
+      skip: pagination.skip,
     }),
-    prisma.refillRequest.count(),
+    repo(RefillRequest).count(),
   ]);
 }
 
 export async function findByUserId(userId: string) {
-  return prisma.refillRequest.findMany({
+  return repo(RefillRequest).find({
     where: { userId },
-    orderBy: { createdAt: "desc" },
+    order: { createdAt: "DESC" },
   });
 }
 
-export async function update(id: string, data: Prisma.RefillRequestUpdateInput) {
-  return prisma.refillRequest.update({ where: { id }, data });
+export async function update(id: string, data: UpdateRefillRequestInput) {
+  return updateOrFail(repo(RefillRequest), id, data);
 }

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as serviceService from "../services/service.service";
 import { parsePagination, setTotalCountHeader } from "../utils/pagination";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateServiceInput, UpdateServiceInput } from "../validators/service.validator";
 
 export async function list(req: Request, res: Response) {

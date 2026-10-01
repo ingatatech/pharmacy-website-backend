@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as pharmacistService from "../services/pharmacist.service";
 import * as locationService from "../services/location.service";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { parsePagination, setTotalCountHeader } from "../utils/pagination";
 import { UpdateOwnBranchInput } from "../validators/location.validator";
 import { UpdateRefillRequestInput } from "../validators/refill.validator";

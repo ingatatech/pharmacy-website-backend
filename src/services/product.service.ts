@@ -1,66 +1,84 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { Brackets, FindOptionsWhere } from "typeorm";
+import { repo } from "../db/data-source";
+import { Product } from "../db/entities";
+import { deleteOrFail, updateOrFail } from "../db/errors";
 import { PaginationOptions } from "../utils/pagination";
+import {
+  CreateProductInput,
+  UpdateProductInput,
+} from "../validators/product.validator";
 
-export async function findPublished(categorySlug: string | undefined, pagination: PaginationOptions) {
-  const where: Prisma.ProductWhereInput = { isPublished: true };
+export async function findPublished(
+  categorySlug: string | undefined,
+  pagination: PaginationOptions,
+) {
+  const where: FindOptionsWhere<Product> = { isPublished: true };
   if (categorySlug) {
     where.category = { slug: categorySlug };
   }
 
   return Promise.all([
-    prisma.product.findMany({
+    repo(Product).find({
       where,
-      include: { category: true },
+      relations: { category: true },
       // Newest first. Without an explicit order Postgres returns rows in
       // whatever order it happens to produce, so the catalog and the homepage
       // teaser could show a different set of products on every cache refresh.
-      // ...pagination carries take/skip and must stay last so the limit wins.
-      orderBy: { createdAt: "desc" },
-      ...pagination,
+      order: { createdAt: "DESC" },
+      take: pagination.take,
+      skip: pagination.skip,
     }),
-    prisma.product.count({ where }),
+    repo(Product).count({ where }),
   ]);
 }
 
 export async function search(query: string) {
-  return prisma.product.findMany({
-    where: {
-      isPublished: true,
-      OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { brandName: { contains: query, mode: "insensitive" } },
-        { activeIngredient: { contains: query, mode: "insensitive" } },
-      ],
-    },
-    include: { category: true },
-  });
+  // Built with the query builder rather than a `where` object because TypeORM's
+  // FindOptionsWhere is a mapped type over the entity's own keys and has no OR
+  // support; Brackets gives the same grouping Prisma's OR array did.
+  //
+  // ILIKE, not LIKE: Prisma's `contains` with `mode: "insensitive"` was
+  // case-insensitive, and plain LIKE would quietly make search stop matching
+  // "aspirin" for a search of "Aspirin".
+  return repo(Product)
+    .createQueryBuilder("product")
+    .leftJoinAndSelect("product.category", "category")
+    .where("product.isPublished = true")
+    .andWhere(
+      new Brackets((qb) => {
+        qb.where("product.name ILIKE :query", { query: `%${query}%` })
+          .orWhere("product.brandName ILIKE :query", { query: `%${query}%` })
+          .orWhere("product.activeIngredient ILIKE :query", { query: `%${query}%` });
+      }),
+    )
+    .getMany();
 }
 
 export async function findPublishedBySlug(slug: string) {
-  return prisma.product.findFirst({
+  return repo(Product).findOne({
     where: { slug, isPublished: true },
-    include: { category: true },
+    relations: { category: true },
   });
 }
 
 // Unfiltered — includes drafts (isPublished: false) — for the admin
 // dashboard, which needs to list and edit products before they go live.
 export async function findAll() {
-  return prisma.product.findMany({
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
+  return repo(Product).find({
+    relations: { category: true },
+    order: { createdAt: "DESC" },
   });
 }
 
-export async function create(data: Prisma.ProductCreateInput) {
-  return prisma.product.create({ data });
+export async function create(data: CreateProductInput) {
+  const repository = repo(Product);
+  return repository.save(repository.create(data));
 }
 
-export async function update(id: string, data: Prisma.ProductUpdateInput) {
-  return prisma.product.update({ where: { id }, data });
+export async function update(id: string, data: UpdateProductInput) {
+  return updateOrFail(repo(Product), id, data);
 }
 
 export async function remove(id: string) {
-  return prisma.product.delete({ where: { id } });
+  await deleteOrFail(repo(Product), id);
 }

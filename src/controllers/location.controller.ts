@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as locationService from "../services/location.service";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateLocationInput, UpdateLocationInput } from "../validators/location.validator";
 
 export async function list(_req: Request, res: Response) {

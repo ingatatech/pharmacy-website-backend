@@ -1,16 +1,21 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { SiteSetting } from "../db/entities";
+import { updateOrFail } from "../db/errors";
+import { UpdateSiteSettingInput } from "../validators/site-setting.validator";
 
+// Site settings are a single conceptual row. The oldest row wins, matching
+// Prisma's unordered findFirst on the seeded single row.
 export async function get() {
-  return prisma.siteSetting.findFirst();
+  return repo(SiteSetting).findOne({ where: {}, order: { id: "ASC" } });
 }
 
-export async function upsert(data: Prisma.SiteSettingUpdateInput & Prisma.SiteSettingCreateInput) {
-  const existing = await prisma.siteSetting.findFirst();
+export async function upsert(data: UpdateSiteSettingInput) {
+  const repository = repo(SiteSetting);
+  const existing = await repository.findOne({ where: {}, order: { id: "ASC" } });
 
   if (existing) {
-    return prisma.siteSetting.update({ where: { id: existing.id }, data });
+    return updateOrFail(repository, existing.id, data);
   }
 
-  return prisma.siteSetting.create({ data });
+  return repository.save(repository.create(data));
 }

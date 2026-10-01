@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as teamService from "../services/team.service";
-import { isNotFoundError } from "../utils/prisma-errors";
+import { isNotFoundError } from "../db/errors";
 import { CreateTeamMemberInput, UpdateTeamMemberInput } from "../validators/team.validator";
 
 export async function list(_req: Request, res: Response) {

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { app } from "../src/app";
-import { prisma } from "../src/prisma";
+import { repo } from "../src/db/data-source";
+import { Category } from "../src/db/entities";
 import { loginAsAdmin } from "./helpers/auth";
 
 const TEST_CATEGORY_SLUG = "vitest-test-category";
@@ -13,11 +14,11 @@ describe("Categories", () => {
     adminToken = await loginAsAdmin();
     // Idempotent: if a previous failed run left this behind, remove it so
     // the "create" test below can rely on the slug being free.
-    await prisma.category.deleteMany({ where: { slug: TEST_CATEGORY_SLUG } });
+    await repo(Category).delete({ slug: TEST_CATEGORY_SLUG });
   });
 
   afterAll(async () => {
-    await prisma.category.deleteMany({ where: { slug: TEST_CATEGORY_SLUG } });
+    await repo(Category).delete({ slug: TEST_CATEGORY_SLUG });
   });
 
   describe("GET /api/categories", () => {
@@ -62,7 +63,7 @@ describe("Categories", () => {
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({ slug, type: "product" });
 
-      await prisma.category.delete({ where: { id: createResponse.body.id } });
+      await repo(Category).delete({ id: createResponse.body.id });
     });
   });
 

@@ -1,28 +1,32 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { Category } from "../db/entities";
+import { deleteOrFail, updateOrFail } from "../db/errors";
 import { CategoryType } from "../types";
+import {
+  CreateCategoryInput,
+  UpdateCategoryInput,
+} from "../validators/category.validator";
 
 export async function findAll(type: CategoryType | undefined) {
-  const where: Prisma.CategoryWhereInput = {};
-  if (type) {
-    where.type = type;
-  }
-
-  return prisma.category.findMany({ where, orderBy: { name: "asc" } });
+  return repo(Category).find({
+    where: type ? { type } : {},
+    order: { name: "ASC" },
+  });
 }
 
 export async function findBySlug(slug: string) {
-  return prisma.category.findUnique({ where: { slug } });
+  return repo(Category).findOne({ where: { slug } });
 }
 
-export async function create(data: Prisma.CategoryCreateInput) {
-  return prisma.category.create({ data });
+export async function create(data: CreateCategoryInput) {
+  const repository = repo(Category);
+  return repository.save(repository.create(data));
 }
 
-export async function update(id: string, data: Prisma.CategoryUpdateInput) {
-  return prisma.category.update({ where: { id }, data });
+export async function update(id: string, data: UpdateCategoryInput) {
+  return updateOrFail(repo(Category), id, data);
 }
 
 export async function remove(id: string) {
-  return prisma.category.delete({ where: { id } });
+  await deleteOrFail(repo(Category), id);
 }

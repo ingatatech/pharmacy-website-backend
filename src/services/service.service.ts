@@ -1,42 +1,51 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
+import { repo } from "../db/data-source";
+import { Service } from "../db/entities";
+import { deleteOrFail, updateOrFail } from "../db/errors";
 import { PaginationOptions } from "../utils/pagination";
+import {
+  CreateServiceInput,
+  UpdateServiceInput,
+} from "../validators/service.validator";
 
 export async function findPublished(pagination: PaginationOptions) {
+  const where = { isPublished: true };
+
   return Promise.all([
-    prisma.service.findMany({
-      where: { isPublished: true },
-      include: { category: true },
-      ...pagination,
+    repo(Service).find({
+      where,
+      relations: { category: true },
+      take: pagination.take,
+      skip: pagination.skip,
     }),
-    prisma.service.count({ where: { isPublished: true } }),
+    repo(Service).count({ where }),
   ]);
 }
 
 export async function findPublishedBySlug(slug: string) {
-  return prisma.service.findFirst({
+  return repo(Service).findOne({
     where: { slug, isPublished: true },
-    include: { category: true },
+    relations: { category: true },
   });
 }
 
 // Unfiltered — includes drafts (isPublished: false) — for the admin
 // dashboard, which needs to list and edit services before they go live.
 export async function findAll() {
-  return prisma.service.findMany({
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
+  return repo(Service).find({
+    relations: { category: true },
+    order: { createdAt: "DESC" },
   });
 }
 
-export async function create(data: Prisma.ServiceCreateInput) {
-  return prisma.service.create({ data });
+export async function create(data: CreateServiceInput) {
+  const repository = repo(Service);
+  return repository.save(repository.create(data));
 }
 
-export async function update(id: string, data: Prisma.ServiceUpdateInput) {
-  return prisma.service.update({ where: { id }, data });
+export async function update(id: string, data: UpdateServiceInput) {
+  return updateOrFail(repo(Service), id, data);
 }
 
 export async function remove(id: string) {
-  return prisma.service.delete({ where: { id } });
+  await deleteOrFail(repo(Service), id);
 }

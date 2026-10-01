@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
-import { prisma } from "./prisma";
+import { closeDb, initializeDb, repo } from "./db/data-source";
+import { User } from "./db/entities";
 
 // Placeholder credentials for local/dev use only.
 // CHANGE THIS PASSWORD IMMEDIATELY in any shared or production environment.
@@ -11,30 +12,31 @@ async function seedAdmin() {
   const password = process.argv[3] || DEFAULT_PASSWORD;
   const fullName = process.argv[4] || "Ingata Admin";
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  await initializeDb();
 
-  if (existing) {
-    console.log(`A user with email "${email}" already exists. No changes made.`);
-    await prisma.$disconnect();
-    return;
+  try {
+    const users = repo(User);
+    const existing = await users.findOne({ where: { email } });
+
+    if (existing) {
+      console.log(`A user with email "${email}" already exists. No changes made.`);
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await users.save(users.create({ email, passwordHash, fullName, role: "admin" }));
+
+    console.log(`Admin user created: ${email}`);
+    if (email === DEFAULT_EMAIL && password === DEFAULT_PASSWORD) {
+      console.log(
+        "WARNING: default placeholder credentials were used. Change the password immediately."
+      );
+    }
+  } finally {
+    // Always close, so a failed seed can't leave the process hanging on an
+    // open connection (which is what the old $disconnect calls were doing).
+    await closeDb();
   }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      fullName,
-      role: "admin",
-    },
-  });
-
-  console.log(`Admin user created: ${email}`);
-  if (email === DEFAULT_EMAIL && password === DEFAULT_PASSWORD) {
-    console.log("WARNING: default placeholder credentials were used. Change the password immediately.");
-  }
-
-  await prisma.$disconnect();
 }
 
 seedAdmin().catch((error) => {
