@@ -7,6 +7,7 @@ import {
   Product,
   Service,
   SiteSetting,
+  Testimonial,
   User,
 } from "./db/entities";
 
@@ -162,6 +163,37 @@ async function seedFaqs() {
   console.log("Seeded FAQs.");
 }
 
+async function seedTestimonials() {
+  const testimonials = repo(Testimonial);
+  if ((await testimonials.count()) > 0) {
+    console.log("Testimonials already exist. Skipping.");
+    return;
+  }
+
+  const rows = [
+    ["Aline M.", "Chronic-care customer", 5, "The pharmacist took time to explain my blood pressure medication and how to take it consistently. I never feel rushed here."],
+    ["Eric N.", "Parent", 5, "I came in late with a sick child and they still helped us quickly. The staff were patient and kind with him."],
+    ["Grace U.", "Regular customer", 4, "Refills are easy and they usually have what I need in stock. Waiting can take a little while at peak hours."],
+    ["Jean-Paul K.", "New customer", 5, "They explained my prescription clearly and warned me about side effects I should watch for. Very thorough."],
+    ["Claudine B.", "Wellness customer", 4, "Good advice on vitamins and a proper explanation of what I actually needed. I appreciated that they didn't oversell."],
+    ["Samuel R.", "Regular customer", 5, "Friendly, professional and reliable. This is the branch I trust for my family's medication."],
+  ] as const;
+
+  await testimonials.save(
+    testimonials.create(
+      rows.map(([customerName, customerCategory, starRating, testimonialText], index) => ({
+        customerName,
+        customerCategory,
+        starRating,
+        testimonialText,
+        displayOrder: index,
+        isPublished: true,
+      })),
+    ),
+  );
+  console.log("Seeded testimonials.");
+}
+
 async function seedLocations() {
   const locations = repo(PharmacyLocation);
   if ((await locations.count()) > 0) {
@@ -260,6 +292,7 @@ async function seedData() {
     await seedServices();
     await seedProducts();
     await seedFaqs();
+    await seedTestimonials();
     await seedLocations();
     await seedSiteSettings();
     await seedArticle();

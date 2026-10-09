@@ -7,6 +7,7 @@ export const createTestimonialSchema = z
     customerCategory: optionalNullableString,
     testimonialText: requiredString("Testimonial text"),
     photoUrl: optionalNullableString,
+    starRating: z.number().int().min(1).max(5).optional(),
     displayOrder: z.number().int().optional(),
     isPublished: z.boolean().optional(),
   })

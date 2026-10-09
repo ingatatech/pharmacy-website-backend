@@ -17,6 +17,9 @@ export class Testimonial {
   @Column({ type: "varchar", nullable: true })
   photoUrl: string | null;
 
+  @Column({ type: "integer", default: 5 })
+  starRating: number;
+
   @Column({ type: "integer", default: 0 })
   displayOrder: number;
 
