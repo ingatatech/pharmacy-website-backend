@@ -5,6 +5,7 @@ const JWT_EXPIRES_IN_SECONDS = 8 * 60 * 60; // 8 hours
 export interface AuthTokenPayload {
   userId: string;
   role: string;
+  locationId?: string | null;
 }
 
 function getSecret(): string {

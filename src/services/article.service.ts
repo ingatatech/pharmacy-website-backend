@@ -1,6 +1,6 @@
 ﻿import { repo } from "../db/data-source";
 import { Article } from "../db/entities";
-import { updateOrFail } from "../db/errors";
+import { deleteOrFail, updateOrFail } from "../db/errors";
 import { PaginationOptions } from "../utils/pagination";
 import {
   CreateArticleInput,
@@ -100,4 +100,8 @@ export async function publish(id: string) {
     { status: "published", publishedAt: new Date() },
     { relations: WITH_PEOPLE },
   );
+}
+
+export async function remove(id: string) {
+  await deleteOrFail(repo(Article), id);
 }

@@ -46,3 +46,15 @@ export async function update(
     throw error;
   }
 }
+
+export async function remove(req: Request<{ id: string }>, res: Response) {
+  try {
+    await contactService.remove(req.params.id);
+    res.status(204).send();
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return res.status(404).json({ error: "Contact inquiry not found." });
+    }
+    throw error;
+  }
+}

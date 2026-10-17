@@ -197,4 +197,12 @@ router.patch(
   refillController.update
 );
 
+router.delete(
+  "/admin/:id",
+  authenticate,
+  requireRole("admin"),
+  validateParams(idParamSchema),
+  refillController.remove
+);
+
 export default router;

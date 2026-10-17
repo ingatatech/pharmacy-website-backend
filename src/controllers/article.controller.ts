@@ -104,3 +104,15 @@ export async function publish(req: Request<{ id: string }>, res: Response) {
   const updated = await articleService.publish(article.id);
   res.json(updated);
 }
+
+export async function remove(req: Request<{ id: string }>, res: Response) {
+  try {
+    await articleService.remove(req.params.id);
+    res.status(204).send();
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return res.status(404).json({ error: "Article not found." });
+    }
+    throw error;
+  }
+}

@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { Category } from "./category.entity";
+import { PharmacyLocation } from "./pharmacy-location.entity";
 
 @Entity("product")
 export class Product {
@@ -69,6 +70,10 @@ export class Product {
   @Column({ type: "uuid", nullable: true })
   categoryId: string | null;
 
+  @Index("IDX_product_locationId")
+  @Column({ type: "uuid", nullable: true })
+  locationId: string | null;
+
   @Column({ type: "varchar", nullable: true })
   metaTitle: string | null;
 
@@ -83,4 +88,11 @@ export class Product {
     foreignKeyConstraintName: "FK_ff0c0301a95e517153df97f6812",
   })
   category: Category | null;
+
+  @ManyToOne(() => PharmacyLocation, { onDelete: "NO ACTION" })
+  @JoinColumn({
+    name: "locationId",
+    foreignKeyConstraintName: "FK_product_location",
+  })
+  location: PharmacyLocation | null;
 }

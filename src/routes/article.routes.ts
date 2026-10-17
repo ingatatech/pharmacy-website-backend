@@ -158,7 +158,7 @@ router.get("/:slug", articleController.getBySlug);
 router.post(
   "/",
   authenticate,
-  requireRole("admin"),
+  requireRole("admin", "pharmacist_reviewer"),
   validateBody(createArticleSchema),
   articleController.create
 );
@@ -220,7 +220,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  requireRole("admin"),
+  requireRole("admin", "pharmacist_reviewer"),
   validateParams(idParamSchema),
   validateBody(updateArticleSchema),
   articleController.update
@@ -445,9 +445,17 @@ router.post(
 router.post(
   "/:id/publish",
   authenticate,
-  requireRole("admin"),
+  requireRole("admin", "pharmacist_reviewer"),
   validateParams(idParamSchema),
   articleController.publish
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  requireRole("admin", "pharmacist_reviewer"),
+  validateParams(idParamSchema),
+  articleController.remove
 );
 
 export default router;

@@ -17,6 +17,7 @@ export const createServiceSchema = z
     metaTitle: optionalNullableString,
     metaDescription: optionalNullableString,
     isPublished: z.boolean().optional(),
+    locationId: z.uuid().nullable().optional(),
   })
   .strict();
 

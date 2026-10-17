@@ -63,8 +63,10 @@ export async function findPublishedBySlug(slug: string) {
 
 // Unfiltered — includes drafts (isPublished: false) — for the admin
 // dashboard, which needs to list and edit products before they go live.
-export async function findAll() {
+export async function findAll(locationId?: string) {
+  const where = locationId ? { locationId } : {};
   return repo(Product).find({
+    where,
     relations: { category: true },
     order: { createdAt: "DESC" },
   });

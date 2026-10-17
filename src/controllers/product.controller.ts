@@ -13,8 +13,9 @@ export async function list(req: Request, res: Response) {
   res.json(products);
 }
 
-export async function listAllForAdmin(_req: Request, res: Response) {
-  const products = await productService.findAll();
+export async function listAllForAdmin(req: Request, res: Response) {
+  const locationId = req.user?.role === "pharmacist_reviewer" && req.user.locationId ? req.user.locationId : undefined;
+  const products = await productService.findAll(locationId);
   res.json(products);
 }
 
@@ -41,7 +42,11 @@ export async function getBySlug(req: Request, res: Response) {
 }
 
 export async function create(req: Request<{}, unknown, CreateProductInput>, res: Response) {
-  const product = await productService.create(req.body);
+  const payload = { ...req.body };
+  if (req.user?.role === "pharmacist_reviewer") {
+    payload.locationId = req.user.locationId;
+  }
+  const product = await productService.create(payload as CreateProductInput);
 
   res.status(201).json(product);
 }

@@ -110,7 +110,7 @@ router.get("/search", productController.search);
  *               $ref: '#/components/schemas/Error'
  */
 // Registered before "/:slug" so Express doesn't match "admin" as a slug value.
-router.get("/admin/all", authenticate, requireRole("admin"), productController.listAllForAdmin);
+router.get("/admin/all", authenticate, requireRole("admin", "pharmacist_reviewer"), productController.listAllForAdmin);
 
 /**
  * @swagger
@@ -196,7 +196,7 @@ router.get("/:slug", productController.getBySlug);
 router.post(
   "/",
   authenticate,
-  requireRole("admin"),
+  requireRole("admin", "pharmacist_reviewer"),
   validateBody(createProductSchema),
   productController.create
 );
@@ -256,7 +256,7 @@ router.post(
 router.patch(
   "/:id",
   authenticate,
-  requireRole("admin"),
+  requireRole("admin", "pharmacist_reviewer"),
   validateParams(idParamSchema),
   validateBody(updateProductSchema),
   productController.update
@@ -303,7 +303,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  requireRole("admin"),
+  requireRole("admin", "pharmacist_reviewer"),
   validateParams(idParamSchema),
   productController.remove
 );

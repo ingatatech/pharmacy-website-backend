@@ -1,6 +1,6 @@
 import { repo } from "../db/data-source";
 import { ContactInquiry } from "../db/entities";
-import { updateOrFail } from "../db/errors";
+import { deleteOrFail, updateOrFail } from "../db/errors";
 import { PaginationOptions } from "../utils/pagination";
 import {
   CreateContactInquiryInput,
@@ -44,4 +44,8 @@ export async function findByUserId(userId: string) {
 
 export async function update(id: string, data: UpdateContactInquiryInput) {
   return updateOrFail(repo(ContactInquiry), id, data);
+}
+
+export async function remove(id: string) {
+  await deleteOrFail(repo(ContactInquiry), id);
 }

@@ -194,4 +194,12 @@ router.patch(
   contactController.update
 );
 
+router.delete(
+  "/admin/:id",
+  authenticate,
+  requireRole("admin"),
+  validateParams(idParamSchema),
+  contactController.remove
+);
+
 export default router;

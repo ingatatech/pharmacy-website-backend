@@ -1,6 +1,6 @@
 import { repo } from "../db/data-source";
 import { RefillRequest } from "../db/entities";
-import { updateOrFail } from "../db/errors";
+import { deleteOrFail, updateOrFail } from "../db/errors";
 import { PaginationOptions } from "../utils/pagination";
 import {
   CreateRefillRequestInput,
@@ -45,4 +45,8 @@ export async function findByUserId(userId: string) {
 
 export async function update(id: string, data: UpdateRefillRequestInput) {
   return updateOrFail(repo(RefillRequest), id, data);
+}
+
+export async function remove(id: string) {
+  await deleteOrFail(repo(RefillRequest), id);
 }

@@ -41,8 +41,8 @@ export async function update(
   res: Response
 ) {
   try {
-    const refillRequest = await refillService.update(req.params.id, req.body);
-    res.json(refillRequest);
+    const refill = await refillService.update(req.params.id, req.body);
+    res.json(refill);
   } catch (error) {
     if (isNotFoundError(error)) {
       return res.status(404).json({ error: "Refill request not found." });
@@ -50,3 +50,16 @@ export async function update(
     throw error;
   }
 }
+
+export async function remove(req: Request<{ id: string }>, res: Response) {
+  try {
+    await refillService.remove(req.params.id);
+    res.status(204).send();
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return res.status(404).json({ error: "Refill request not found." });
+    }
+    throw error;
+  }
+}
+
