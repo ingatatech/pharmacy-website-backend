@@ -65,6 +65,23 @@ describe("Admin user management (/api/admin/users)", () => {
       expect(created).toBeNull();
     });
 
+    it("refuses any role other than pharmacist_reviewer, e.g. customer (400)", async () => {
+      const response = await request(app)
+        .post("/api/admin/users")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          fullName: "New Staff",
+          email: NEW_REVIEWER_EMAIL,
+          password: "reviewer-password123",
+          role: "customer",
+        });
+
+      expect(response.status).toBe(400);
+
+      const created = await repo(User).findOne({ where: { email: NEW_REVIEWER_EMAIL } });
+      expect(created).toBeNull();
+    });
+
     it("stores the password hashed, never in plain text", async () => {
       const plainPassword = "reviewer-password123";
       const createResponse = await request(app)
@@ -228,6 +245,50 @@ const stored = await repo(User).findOneOrFail({
       const response = await request(app)
         .delete("/api/admin/users/not-a-uuid")
         .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(400);
+    });
+
+    it("refuses to promote anyone to admin over the API (400)", async () => {
+      const createResponse = await request(app)
+        .post("/api/admin/users")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          fullName: "New Reviewer",
+          email: NEW_REVIEWER_EMAIL,
+          password: "reviewer-password123",
+          role: "pharmacist_reviewer",
+        });
+      const userId = createResponse.body.id;
+
+      const response = await request(app)
+        .patch(`/api/admin/users/${userId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ role: "admin" });
+
+      expect(response.status).toBe(400);
+
+      // The rejected update left the stored role untouched.
+      const unchanged = await repo(User).findOneOrFail({ where: { id: userId } });
+      expect(unchanged.role).toBe("pharmacist_reviewer");
+    });
+
+    it("rejects an unknown role on update with 400", async () => {
+      const createResponse = await request(app)
+        .post("/api/admin/users")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          fullName: "New Reviewer",
+          email: NEW_REVIEWER_EMAIL,
+          password: "reviewer-password123",
+          role: "pharmacist_reviewer",
+        });
+      const userId = createResponse.body.id;
+
+      const response = await request(app)
+        .patch(`/api/admin/users/${userId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ role: "superuser" });
 
       expect(response.status).toBe(400);
     });
