@@ -36,8 +36,9 @@ export const updateUserSchema = z
     email: email.optional(),
     password: password.optional(),
     role: assignableRole.optional(),
-    locationId,
-  });
+    locationId: locationId.optional(),
+  })
+  .partial();
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
