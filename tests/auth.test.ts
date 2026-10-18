@@ -49,9 +49,9 @@ describe("POST /api/auth/register", () => {
     expect(stored.passwordHash).toMatch(/^\$2[aby]\$/);
   });
 
-  it("rejects a request that tries to set its own role, even to \"customer\"", async () => {
-    // registerSchema has no "role" field at all, and is .strict() — sending
-    // one at all is an unrecognized key, not just an ignored one.
+  it("ignores a body-supplied role and still creates a plain customer", async () => {
+    // registerSchema has no "role" field and strips unknown keys, so asking
+    // for "admin" is silently ignored — the account is created as "customer".
     const response = await request(app)
       .post("/api/auth/register")
       .send({
@@ -61,7 +61,8 @@ describe("POST /api/auth/register", () => {
         role: "admin",
       });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(201);
+    expect(response.body.user.role).toBe("customer");
   });
 
   it("rejects a duplicate email with 409", async () => {

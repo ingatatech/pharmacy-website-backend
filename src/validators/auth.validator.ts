@@ -9,18 +9,20 @@ export const loginSchema = z
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
-// Deliberately has no `role` field at all — not even an optional/ignored
-// one. With .strict(), a request body that includes "role" is rejected
-// outright (400 "Unrecognized key: role") rather than silently dropped, so
-// there is no way for a self-registering caller to request anything other
-// than the "customer" role the service always assigns.
+// Public self-registration. It has no `role` field, and unknown keys are
+// stripped rather than rejected, so a body that includes "role": "admin" is
+// simply ignored — the account is still created with the "customer" role the
+// service assigns (see auth.service.ts). That is deliberate: the role is
+// server-owned, and ignoring the field keeps a self-registering caller from
+// probing which fields matter while guaranteeing they can never set anything
+// but "customer".
 export const registerSchema = z
   .object({
     fullName: z.string().trim().min(2, "Full name must be at least 2 characters."),
     email: z.email("A valid email address is required."),
     password: z.string().min(8, "Password must be at least 8 characters."),
   })
-  .strict();
+  .strip();
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 
