@@ -339,41 +339,30 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
 // paths, so the resolved path is normalized to forward slashes here.
 const routesGlob = path.join(__dirname, "routes", "*.{ts,js}").split(path.sep).join("/");
 
-// The published docs describe only the public API. Every admin-only,
-// pharmacist-only or otherwise authenticated endpoint documents a `security`
-// requirement, so dropping operations that carry one removes the whole staff
-// surface in a single, maintenance-free rule — a route added later stays
-// hidden automatically if it requires a token. Path prefixes are also excluded
-// explicitly as a belt-and-suspenders guard.
-const HIDDEN_PATH_PREFIXES = ["/api/admin", "/api/audit-logs", "/api/pharmacist"];
+// The docs expose the full API — every read, create, update and delete — so
+// data can be managed straight from the Swagger UI (log in via /api/auth/login,
+// then use the Authorize button to attach the bearer token). The one exception
+// is the admin management surface: user administration and the audit log stay
+// out of the docs even when everything else is shown.
+const HIDDEN_PATH_PREFIXES = ["/api/admin", "/api/audit-logs"];
 
 type SwaggerSpec = { paths?: Record<string, Record<string, any>> } & Record<string, any>;
 
-function hideNonPublicOperations(spec: SwaggerSpec): SwaggerSpec {
-  const publicPaths: Record<string, Record<string, any>> = {};
+function hideAdminOperations(spec: SwaggerSpec): SwaggerSpec {
+  const visiblePaths: Record<string, Record<string, any>> = {};
 
   for (const [routePath, pathItem] of Object.entries(spec.paths ?? {})) {
     if (HIDDEN_PATH_PREFIXES.some((prefix) => routePath.startsWith(prefix))) {
       continue;
     }
 
-    const operations: Record<string, any> = {};
-    for (const [method, operation] of Object.entries(pathItem)) {
-      const requiresAuth = Array.isArray(operation.security) && operation.security.length > 0;
-      if (!requiresAuth) {
-        operations[method] = operation;
-      }
-    }
-
-    if (Object.keys(operations).length > 0) {
-      publicPaths[routePath] = operations;
-    }
+    visiblePaths[routePath] = pathItem;
   }
 
-  return { ...spec, paths: publicPaths };
+  return { ...spec, paths: visiblePaths };
 }
 
-const swaggerSpec = hideNonPublicOperations(
+const swaggerSpec = hideAdminOperations(
   swaggerJsdoc({
     definition: swaggerDefinition,
     apis: [routesGlob],

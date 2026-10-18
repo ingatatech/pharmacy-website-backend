@@ -3,31 +3,44 @@ import request from "supertest";
 import { app } from "../src/app";
 import spec from "../src/swagger";
 
-type Operation = { security?: unknown[] };
-const paths = (spec.paths ?? {}) as Record<string, Record<string, Operation>>;
+const paths = (spec.paths ?? {}) as Record<string, Record<string, unknown>>;
 
-describe("Swagger spec documents only the public API", () => {
-  it("keeps the sign-up, login and health endpoints", () => {
+describe("Swagger spec", () => {
+  it("documents the public auth and health endpoints", () => {
     expect(paths).toHaveProperty("/api/auth/register");
     expect(paths).toHaveProperty("/api/auth/login");
     expect(paths).toHaveProperty("/api/health");
   });
 
-  it("never exposes the admin, audit-log or pharmacist surfaces", () => {
+  it("exposes full CRUD for content resources", () => {
+    // A representative sample across resources, covering create/update/delete.
+    expect(paths["/api/services"]).toHaveProperty("post");
+    expect(paths["/api/services/{id}"]).toHaveProperty("patch");
+    expect(paths["/api/services/{id}"]).toHaveProperty("delete");
+
+    expect(paths["/api/products"]).toHaveProperty("post");
+    expect(paths["/api/products/{id}"]).toHaveProperty("delete");
+
+    expect(paths["/api/faqs"]).toHaveProperty("post");
+    expect(paths["/api/categories/{id}"]).toHaveProperty("delete");
+
+    expect(paths["/api/articles"]).toHaveProperty("post");
+    expect(paths["/api/site-settings"]).toHaveProperty("patch");
+    expect(paths["/api/uploads"]).toHaveProperty("post");
+  });
+
+  it("keeps the admin management and audit-log surface hidden", () => {
     for (const path of Object.keys(paths)) {
       expect(path.startsWith("/api/admin"), `${path} should not be documented`).toBe(false);
       expect(path.startsWith("/api/audit-logs"), `${path} should not be documented`).toBe(false);
-      expect(path.startsWith("/api/pharmacist"), `${path} should not be documented`).toBe(false);
     }
   });
 
-  it("documents only operations that require no authentication", () => {
-    for (const [path, item] of Object.entries(paths)) {
-      for (const [method, operation] of Object.entries(item)) {
-        const requiresAuth = Array.isArray(operation.security) && operation.security.length > 0;
-        expect(requiresAuth, `${method.toUpperCase()} ${path} must be public`).toBe(false);
-      }
-    }
+  it("defines a bearer auth scheme so the Authorize button works", () => {
+    expect(spec.components.securitySchemes.bearerAuth).toMatchObject({
+      type: "http",
+      scheme: "bearer",
+    });
   });
 });
 
