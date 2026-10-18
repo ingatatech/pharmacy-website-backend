@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
-    "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.json src/seed-admin.ts src/seed-data.ts src/seed-more-data.ts --outDir dist",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/seed-data.js && node dist/seed-more-data.js && node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
