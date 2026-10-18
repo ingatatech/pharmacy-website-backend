@@ -262,7 +262,7 @@ async function seedArticle() {
   const admin = await repo(User).findOne({ where: { role: "admin" } });
 
   if (!admin) {
-    console.log("No admin user found. Run `npm run seed:admin` first to seed a sample article. Skipping.");
+    console.log("No admin user found. Create an admin user first. Skipping article.");
     return;
   }
 

@@ -318,7 +318,7 @@ async function seedLocations() {
 async function seedArticles() {
   const admin = await repo(User).findOne({ where: { role: "admin" } });
   if (!admin) {
-    console.log("No admin user found. Run `npm run seed:admin` first. Skipping articles.");
+    console.log("No admin user found. Create an admin user first. Skipping articles.");
     return;
   }
 

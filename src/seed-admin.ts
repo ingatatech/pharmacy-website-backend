@@ -68,6 +68,10 @@ async function seedAdmin() {
   // ADMIN_PASSWORD environment variable, or prompted for interactively.
   let password = process.env.ADMIN_PASSWORD ?? "";
   if (!password) {
+    // Check if running in non-interactive environment (like Render)
+    if (process.env.CI || !process.stdin.isTTY) {
+      throw new Error("ADMIN_PASSWORD environment variable is required in non-interactive environments.");
+    }
     password = await promptHidden(`Password for ${email}: `);
   }
 
