@@ -47,7 +47,7 @@ describe("Admin user management (/api/admin/users)", () => {
       expect(response.body.passwordHash).toBeUndefined();
     });
 
-    it("lets an admin create another admin account", async () => {
+    it("refuses to create an admin account over the API (400)", async () => {
       const response = await request(app)
         .post("/api/admin/users")
         .set("Authorization", `Bearer ${adminToken}`)
@@ -58,8 +58,11 @@ describe("Admin user management (/api/admin/users)", () => {
           role: "admin",
         });
 
-      expect(response.status).toBe(201);
-      expect(response.body.role).toBe("admin");
+      expect(response.status).toBe(400);
+
+      // And it really was not created.
+      const created = await repo(User).findOne({ where: { email: NEW_ADMIN_EMAIL } });
+      expect(created).toBeNull();
     });
 
     it("stores the password hashed, never in plain text", async () => {
@@ -201,10 +204,10 @@ const stored = await repo(User).findOneOrFail({
       const updateResponse = await request(app)
         .patch(`/api/admin/users/${userId}`)
         .set("Authorization", `Bearer ${adminToken}`)
-        .send({ role: "admin" });
+        .send({ role: "customer" });
 
       expect(updateResponse.status).toBe(200);
-      expect(updateResponse.body.role).toBe("admin");
+      expect(updateResponse.body.role).toBe("customer");
 
       const deleteResponse = await request(app)
         .delete(`/api/admin/users/${userId}`)

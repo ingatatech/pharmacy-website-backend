@@ -2,9 +2,24 @@ import bcrypt from "bcrypt";
 import { repo } from "../db/data-source";
 import { User } from "../db/entities";
 import { deleteOrFail, updateOrFail } from "../db/errors";
-import { CreateUserInput, UpdateUserInput } from "../validators/user.validator";
+import { UpdateUserInput } from "../validators/user.validator";
 
 const SALT_ROUNDS = 10;
+
+/**
+ * The shape userService.create needs to persist a new account. Deliberately
+ * wider than the admin API's CreateUserInput: self-registration
+ * (POST /api/auth/register) also creates users and always sets role
+ * "customer", while the admin API's schema only permits "pharmacist_reviewer".
+ * Keeping the service generic here is what lets the two callers share it.
+ */
+export interface NewUserRecord {
+  fullName: string;
+  email: string;
+  password: string;
+  role: string;
+  locationId?: string | null;
+}
 
 // A branch assignment only means something for a pharmacist — it is what scopes
 // their portal. Keeping it on a customer or admin would be misleading data that
@@ -63,7 +78,16 @@ export async function findById(id: string) {
   return repo(User).findOne({ ...USER_READ, where: { id } });
 }
 
-export async function create(data: CreateUserInput) {
+/**
+ * Counts accounts with a given role. The admin user API uses this to refuse
+ * deleting the last remaining admin, which would otherwise leave the system
+ * with nobody able to manage staff.
+ */
+export async function countByRole(role: string) {
+  return repo(User).count({ where: { role } });
+}
+
+export async function create(data: NewUserRecord) {
   const repository = repo(User);
   const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
 
