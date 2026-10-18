@@ -3,6 +3,5 @@
   "compilerOptions": {
     "rootDir": "./src"
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/db/migrate-data-source.ts"]
+  "include": ["src/**/*.ts"]
 }
