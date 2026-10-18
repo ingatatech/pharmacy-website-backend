@@ -197,6 +197,44 @@ router.patch(
   refillController.update
 );
 
+/**
+ * @swagger
+ * /api/prescription-refill/admin/{id}:
+ *   delete:
+ *     summary: Delete a prescription refill request
+ *     description: Requires admin role. Permanently removes the request.
+ *     tags: [Refill]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Refill request deleted successfully
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Refill request not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.delete(
   "/admin/:id",
   authenticate,

@@ -6,7 +6,31 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
   info: {
     title: "Ingata Pharmacy API",
     version: "1.0.0",
-    description: "API for the Ingata Pharmacy corporate and customer-service website",
+    summary: "Backend for the Ingata Pharmacy website — content management, customer requests and staff workflows.",
+    description: [
+      "This is the REST API that powers the Ingata Pharmacy website and its",
+      "admin/pharmacist back-office.",
+      "",
+      "## Authentication",
+      "Most management endpoints require a JSON Web Token. Obtain one from",
+      "`POST /api/auth/login`, then press **Authorize** above and paste the",
+      "`token` value (without any `Bearer ` prefix — Swagger adds that for you).",
+      "",
+      "## Roles",
+      "| Role | Who | What they can do |",
+      "|---|---|---|",
+      "| `customer` | Anyone who signs up | Submit contact and refill requests, manage their own profile |",
+      "| `pharmacist_reviewer` | Created by an admin | Content management plus the review workflow |",
+      "| `admin` | Created by the seed script only | Everything, including content management |",
+      "",
+      "Accounts are never created through the public API with an elevated role:",
+      "self-registration always yields `customer`, and `admin` accounts are",
+      "provisioned only by the `seed:admin` script.",
+      "",
+      "## Errors",
+      "Errors are returned as JSON with an `error` field, e.g.",
+      '`{ "error": "Resource not found." }`.',
+    ].join("\n"),
   },
   servers: [
     {
@@ -16,6 +40,27 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
       url: "/",
       description: "Current server",
     },
+  ],
+  // Declared up front so the sidebar groups operations in this order and each
+  // group carries a one-line explanation. Names must match the tags used by the
+  // routes exactly, otherwise Swagger UI falls back to an alphabetical,
+  // undescribed group.
+  tags: [
+    { name: "Health", description: "Uptime and readiness checks" },
+    { name: "Auth", description: "Sign up, log in and manage your own profile" },
+    { name: "Services", description: "Pharmacy services shown on the public site" },
+    { name: "Products", description: "Retail products shown in the public catalogue" },
+    { name: "Categories", description: "Product categories" },
+    { name: "Faqs", description: "Frequently asked questions" },
+    { name: "Testimonials", description: "Customer testimonials" },
+    { name: "Locations", description: "Branches and opening hours" },
+    { name: "Team", description: "Staff members listed on the public site" },
+    { name: "Articles", description: "Blog posts, with a pharmacist review workflow" },
+    { name: "SiteSettings", description: "Global site content and branding" },
+    { name: "Contact", description: "Public contact form and its handling" },
+    { name: "Refill", description: "Public prescription refill requests and their handling" },
+    { name: "Uploads", description: "Image upload used by the content forms" },
+    { name: "Pharmacist", description: "Read-only views of the pharmacist workspace" },
   ],
   paths: {
     "/api/health": {
@@ -339,16 +384,25 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
 // paths, so the resolved path is normalized to forward slashes here.
 const routesGlob = path.join(__dirname, "routes", "*.{ts,js}").split(path.sep).join("/");
 
-// The docs expose the full API — every read, create, update and delete — so
-// data can be managed straight from the Swagger UI (log in via /api/auth/login,
-// then use the Authorize button to attach the bearer token). The one exception
-// is the admin management surface: user administration and the audit log stay
-// out of the docs even when everything else is shown.
+// The docs expose the full content-management API — every read, create, update
+// and delete — so data can be managed straight from the Swagger UI (log in via
+// /api/auth/login, then use the Authorize button to attach the bearer token).
+//
+// Two surfaces are removed from the docs completely:
+//   /api/admin/*     user administration (an admin account is created only by
+//                    the seed script; pharmacists are added by an admin here,
+//                    so this is deliberately not published)
+//   /api/audit-logs  internal audit trail
+//
+// The pharmacist workspace is a special case: its GET endpoints are shown, but
+// its write endpoints are not, since adding or changing data is an admin job.
 const HIDDEN_PATH_PREFIXES = ["/api/admin", "/api/audit-logs"];
+const READ_ONLY_PATH_PREFIXES = ["/api/pharmacist"];
+const READ_ONLY_METHODS = ["get"];
 
 type SwaggerSpec = { paths?: Record<string, Record<string, any>> } & Record<string, any>;
 
-function hideAdminOperations(spec: SwaggerSpec): SwaggerSpec {
+function applyVisibility(spec: SwaggerSpec): SwaggerSpec {
   const visiblePaths: Record<string, Record<string, any>> = {};
 
   for (const [routePath, pathItem] of Object.entries(spec.paths ?? {})) {
@@ -356,13 +410,26 @@ function hideAdminOperations(spec: SwaggerSpec): SwaggerSpec {
       continue;
     }
 
-    visiblePaths[routePath] = pathItem;
+    const operations: Record<string, any> = {};
+    for (const [method, operation] of Object.entries(pathItem)) {
+      const isHiddenWrite =
+        READ_ONLY_PATH_PREFIXES.some((prefix) => routePath.startsWith(prefix)) &&
+        !READ_ONLY_METHODS.includes(method.toLowerCase());
+
+      if (!isHiddenWrite) {
+        operations[method] = operation;
+      }
+    }
+
+    if (Object.keys(operations).length > 0) {
+      visiblePaths[routePath] = operations;
+    }
   }
 
   return { ...spec, paths: visiblePaths };
 }
 
-const swaggerSpec = hideAdminOperations(
+const swaggerSpec = applyVisibility(
   swaggerJsdoc({
     definition: swaggerDefinition,
     apis: [routesGlob],

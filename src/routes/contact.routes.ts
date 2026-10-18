@@ -194,6 +194,44 @@ router.patch(
   contactController.update
 );
 
+/**
+ * @swagger
+ * /api/contact/admin/{id}:
+ *   delete:
+ *     summary: Delete a contact inquiry
+ *     description: Requires admin role. Permanently removes the inquiry.
+ *     tags: [Contact]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Contact inquiry deleted successfully
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Caller does not have the admin role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Contact inquiry not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.delete(
   "/admin/:id",
   authenticate,
