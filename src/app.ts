@@ -52,7 +52,13 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// The interactive API docs are a development aid, so they are served unless
+// the process is running in production. Set ENABLE_DOCS=true to expose them in
+// production as well (e.g. for a demo), otherwise the route simply 404s.
+const docsEnabled = process.env.NODE_ENV !== "production" || process.env.ENABLE_DOCS === "true";
+if (docsEnabled) {
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 app.use("/api/auth", authRouter);
 app.use("/api/services", serviceRouter);

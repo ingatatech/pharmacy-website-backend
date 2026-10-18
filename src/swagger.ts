@@ -10,10 +10,35 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
   },
   servers: [
     {
-      url: "http://localhost:4000",
-      description: "Local development",
+      // A relative URL rather than an absolute one, so "Try it out" targets
+      // whatever host is actually serving the docs — localhost in development,
+      // the Render URL in production — with no configuration.
+      url: "/",
+      description: "Current server",
     },
   ],
+  paths: {
+    "/api/health": {
+      get: {
+        summary: "Service health check",
+        description: "Public. Returns 200 with { status: \"ok\" } while the API process is running.",
+        tags: ["Health"],
+        responses: {
+          200: {
+            description: "The API is up",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: { status: { type: "string", example: "ok" } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   components: {
     securitySchemes: {
       bearerAuth: {
@@ -196,7 +221,7 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
           id: { type: "string", format: "uuid" },
           email: { type: "string", format: "email", example: "reviewer@ingata.com" },
           fullName: { type: "string", example: "Dr. Alice Uwase" },
-          role: { type: "string", enum: ["admin", "pharmacist_reviewer"], example: "pharmacist_reviewer" },
+          role: { type: "string", enum: ["customer", "pharmacist_reviewer", "admin"], example: "customer" },
           createdAt: { type: "string", format: "date-time" },
         },
       },
@@ -314,9 +339,45 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
 // paths, so the resolved path is normalized to forward slashes here.
 const routesGlob = path.join(__dirname, "routes", "*.{ts,js}").split(path.sep).join("/");
 
-const swaggerSpec = swaggerJsdoc({
-  definition: swaggerDefinition,
-  apis: [routesGlob],
-});
+// The published docs describe only the public API. Every admin-only,
+// pharmacist-only or otherwise authenticated endpoint documents a `security`
+// requirement, so dropping operations that carry one removes the whole staff
+// surface in a single, maintenance-free rule — a route added later stays
+// hidden automatically if it requires a token. Path prefixes are also excluded
+// explicitly as a belt-and-suspenders guard.
+const HIDDEN_PATH_PREFIXES = ["/api/admin", "/api/audit-logs", "/api/pharmacist"];
+
+type SwaggerSpec = { paths?: Record<string, Record<string, any>> } & Record<string, any>;
+
+function hideNonPublicOperations(spec: SwaggerSpec): SwaggerSpec {
+  const publicPaths: Record<string, Record<string, any>> = {};
+
+  for (const [routePath, pathItem] of Object.entries(spec.paths ?? {})) {
+    if (HIDDEN_PATH_PREFIXES.some((prefix) => routePath.startsWith(prefix))) {
+      continue;
+    }
+
+    const operations: Record<string, any> = {};
+    for (const [method, operation] of Object.entries(pathItem)) {
+      const requiresAuth = Array.isArray(operation.security) && operation.security.length > 0;
+      if (!requiresAuth) {
+        operations[method] = operation;
+      }
+    }
+
+    if (Object.keys(operations).length > 0) {
+      publicPaths[routePath] = operations;
+    }
+  }
+
+  return { ...spec, paths: publicPaths };
+}
+
+const swaggerSpec = hideNonPublicOperations(
+  swaggerJsdoc({
+    definition: swaggerDefinition,
+    apis: [routesGlob],
+  }) as SwaggerSpec
+);
 
 export default swaggerSpec;

@@ -15,10 +15,11 @@ const router = Router();
  *     description: >
  *       Public — no authentication required. Rate limited to 5 requests per
  *       15 minutes per IP address. The created account always has the
- *       "customer" role; there is no way to request any other role here —
- *       only an existing admin can grant "admin" or "pharmacist_reviewer",
- *       via PATCH /api/admin/users/:id. Returns a JWT immediately, the same
- *       as logging in.
+ *       "customer" role; a "role" sent in the body is simply ignored, so this
+ *       endpoint can never be used to obtain elevated access. Staff accounts
+ *       are provisioned separately: pharmacist_reviewer by an admin through
+ *       POST /api/admin/users, and admin only by the seed:admin script. Returns
+ *       a JWT immediately, the same as logging in.
  *     tags: [Auth]
  *     requestBody:
  *       required: true

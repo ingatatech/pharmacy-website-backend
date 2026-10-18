@@ -42,8 +42,11 @@ router.get("/", userController.list);
  * @swagger
  * /api/admin/users:
  *   post:
- *     summary: Create a new admin or pharmacist_reviewer account
- *     description: Requires admin role. The password is hashed with bcrypt before it is stored.
+ *     summary: Create a new pharmacist_reviewer account
+ *     description: >-
+ *       Requires admin role. Only pharmacist_reviewer accounts can be created
+ *       here — admin accounts are provisioned with the seed:admin script. The
+ *       password is hashed with bcrypt before it is stored.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -58,7 +61,7 @@ router.get("/", userController.list);
  *               fullName: { type: string, example: "Jane Reviewer" }
  *               email: { type: string, format: email, example: "jane@ingata.com" }
  *               password: { type: string, format: password, example: "at-least-8-characters" }
- *               role: { type: string, enum: [admin, pharmacist_reviewer] }
+ *               role: { type: string, enum: [pharmacist_reviewer] }
  *     responses:
  *       201:
  *         description: The created user
