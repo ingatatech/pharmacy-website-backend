@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   Entity,
   Index,
@@ -14,6 +15,12 @@ import { PharmacyLocation } from "./pharmacy-location.entity";
 import { RefillRequest } from "./refill-request.entity";
 
 @Entity("user")
+// Mirrors the CHK_user_role constraint added in migration
+// AddUserRoleCheckConstraint. It is declared here as well as in the migration
+// so TypeORM's schema comparison sees the two as identical — otherwise
+// `npm run db:verify` (and any future generated migration) would treat the
+// constraint as drift and try to drop it, even though the live database has it.
+@Check("CHK_user_role", `"role" IN ('admin', 'pharmacist_reviewer', 'customer')`)
 export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
