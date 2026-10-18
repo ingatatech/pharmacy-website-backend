@@ -151,11 +151,22 @@ npm run dev               # http://localhost:4000
 
 Generate a `JWT_SECRET` for local dev with: `openssl rand -hex 64` (or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
 
-Create a test admin account (reads `admin@ingata.com` / `changeme123` by default — override with `npm run seed:admin -- <email> <password> <fullName>`):
+Create the first admin account. This is the **only** way an admin is created — no API endpoint can create or promote one. Email and full name are optional arguments; the password is never passed on the command line:
 
 ```bash
-npm run seed:admin 
+# Prompted for the password (input is hidden) — recommended when running by hand:
+npm run seed:admin -- admin@ingata.com "Ingata Admin"
+
+# Or supply it through the environment, e.g. for a scripted/unattended setup:
+ADMIN_PASSWORD='a-long-random-password' npm run seed:admin -- admin@ingata.com "Ingata Admin"
 ```
+
+On Windows PowerShell:
+```powershell
+$env:ADMIN_PASSWORD = 'a-long-random-password'; npm run seed:admin -- admin@ingata.com "Ingata Admin"
+```
+
+Defaults are email `admin@ingata.com` and name `Ingata Admin`. The password is required (minimum 8 characters) and is read from the `ADMIN_PASSWORD` environment variable or an interactive prompt. If an account with that email already exists the script makes no changes — it never overwrites an existing admin. When `DATABASE_URL` points at a remote host (such as Render), the script connects over SSL automatically.
 
 Seed sample categories, services, products, FAQs, a branch location, site settings, and a published article (safe to re-run — skips any entity type that already has rows):
 
