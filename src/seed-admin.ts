@@ -1,6 +1,6 @@
 import { Writable } from "stream";
-import readline from "readline";
-import bcrypt from "bcrypt";
+import * as readline from "readline";
+import * as bcrypt from "bcrypt";
 import { DataSource } from "typeorm";
 import { dataSourceOptions } from "./db/data-source";
 import { User } from "./db/entities";
