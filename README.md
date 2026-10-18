@@ -233,6 +233,8 @@ It shells out to `npm run db:migrate` in a child process rather than running the
 | `PORT` | Backend HTTP port (default `4000`) |
 | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://user:pass@host:5432/db?schema=public` — read by `src/db/data-source.ts` at runtime and by `src/db/migrate-data-source.ts` for the migration CLI |
 | `JWT_SECRET` | Signing secret for auth tokens — must be set, no default |
-| `FRONTEND_URL` | The only origin the API's CORS policy allows (see `src/config/cors.ts`). If unset, falls back to `http://localhost:3000` and logs a warning — set it explicitly before deploying anywhere real, e.g. `https://your-pharmacy-frontend.com` in production. |
+| `FRONTEND_URL` | Comma-separated allowlist of browser origins the API's CORS policy trusts (see `src/config/cors.ts`), e.g. `https://your-pharmacy-frontend.vercel.app`. Include the scheme and no trailing slash; a `https://*.domain` entry allows any subdomain. In development `http://localhost:3000` is allowed regardless; in production only this list is trusted, so set it explicitly before deploying. |
+| `ADMIN_PASSWORD` | Used only by `npm run seed:admin`. If unset, the script prompts for the password interactively (input hidden). Never pass it on the command line. |
+| `ENABLE_DOCS` | Set to `true` to serve the Swagger UI at `/api-docs` when `NODE_ENV=production`. Outside production the docs are always served. |
 
 **`.env.test`** (see `.env.test.example`) — same shape as `.env`, but `DATABASE_URL` must point at a separate database (its name must contain `test`). Used only by `npm test`/`npm run test:watch`, never by `npm run dev` or the deployed app.

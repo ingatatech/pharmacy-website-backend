@@ -8,27 +8,53 @@ import { app } from "../src/app";
 // let JS read the response unless that header equals the page's own origin.
 // curl/Supertest can read the response either way — they don't enforce
 // anything. So what's actually testable here, server-side, is the header's
-// VALUE: does it match the configured frontend for that origin, and does it
-// never equal a random, unauthorized origin's own value?
+// VALUE: does it match an allowed origin, and is it absent for one that is not.
+//
+// The suite runs with NODE_ENV=test (not production), so the development
+// origins — http://localhost:3000 and http://127.0.0.1:3000 — are always
+// allowed here, regardless of whether FRONTEND_URL is set.
 describe("CORS", () => {
-  it("reflects the configured FRONTEND_URL for an allowed origin", async () => {
-    const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:3000";
+  it("reflects an allowed dev origin", async () => {
+    const response = await request(app).get("/api/health").set("Origin", "http://localhost:3000");
 
-    const response = await request(app).get("/api/health").set("Origin", allowedOrigin);
-
-    expect(response.headers["access-control-allow-origin"]).toBe(allowedOrigin);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:3000");
   });
 
-  it("never reflects a random, unauthorized origin back", async () => {
-    // With a fixed-string `origin` config, the `cors` package always sends
-    // back the SAME configured value on every response — it does not echo
-    // whatever Origin the request sent. So a random origin's own value is
-    // never what comes back; that mismatch is exactly what makes the
-    // browser refuse to let that page read the response.
-    const randomOrigin = "https://not-our-frontend.example";
+  it("also allows the 127.0.0.1 spelling of the dev origin", async () => {
+    const response = await request(app)
+      .get("/api/health")
+      .set("Origin", "http://127.0.0.1:3000");
 
-    const response = await request(app).get("/api/health").set("Origin", randomOrigin);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://127.0.0.1:3000");
+  });
 
-    expect(response.headers["access-control-allow-origin"]).not.toBe(randomOrigin);
+  it("omits the allow-origin header for an unauthorized origin", async () => {
+    const response = await request(app)
+      .get("/api/health")
+      .set("Origin", "https://not-our-frontend.example");
+
+    // No header at all (rather than a different value) is what makes the
+    // browser block the response — and it confirms we are not echoing the
+    // request's own Origin back to everyone.
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+
+  it("answers a preflight request from an allowed origin", async () => {
+    const response = await request(app)
+      .options("/api/auth/login")
+      .set("Origin", "http://localhost:3000")
+      .set("Access-Control-Request-Method", "POST")
+      .set("Access-Control-Request-Headers", "content-type,authorization");
+
+    expect(response.status).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:3000");
+  });
+
+  it("still serves requests that carry no Origin header (non-browser callers)", async () => {
+    const response = await request(app).get("/api/health");
+
+    expect(response.status).toBe(200);
+    // No Origin to reflect, so no allow-origin header is expected.
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
   });
 });
