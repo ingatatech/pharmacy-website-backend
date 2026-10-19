@@ -231,7 +231,7 @@ router.patch(
  * /api/articles/{id}/submit-for-review:
  *   post:
  *     summary: Submit a draft article for pharmacist review
- *     description: Requires admin role. Only articles with status "draft" can be submitted; moves status to "pending_review".
+ *     description: Requires admin or pharmacist_reviewer. Both roles may create articles, so both may send one for review. Only articles with status "draft" can be submitted; moves status to "pending_review".
  *     tags: [Articles]
  *     security:
  *       - bearerAuth: []
@@ -262,7 +262,7 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Caller does not have the admin role
+ *         description: Caller is neither admin nor pharmacist_reviewer
  *         content:
  *           application/json:
  *             schema:
@@ -277,7 +277,7 @@ router.patch(
 router.post(
   "/:id/submit-for-review",
   authenticate,
-  requireRole("admin"),
+  requireRole("admin", "pharmacist_reviewer"),
   validateParams(idParamSchema),
   articleController.submitForReview
 );
@@ -398,8 +398,13 @@ router.post(
  * @swagger
  * /api/articles/{id}/publish:
  *   post:
- *     summary: Publish an approved article
- *     description: Requires admin role. Only articles with status "approved" can be published; sets publishedAt and moves status to "published".
+ *     summary: Publish an article
+ *     description: >
+ *       Requires admin or pharmacist_reviewer. An admin may publish an article
+ *       from any status (draft, pending_review or approved). Any other role must
+ *       wait until the status is "approved", i.e. until a pharmacist has signed
+ *       off. Sets publishedAt and moves status to "published". Only articles
+ *       with status "published" are returned by the public API.
  *     tags: [Articles]
  *     security:
  *       - bearerAuth: []
@@ -418,7 +423,7 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/Article'
  *       400:
- *         description: Article is not in "approved" status
+ *         description: Caller is not an admin and the article is not in "approved" status
  *         content:
  *           application/json:
  *             schema:
@@ -430,7 +435,7 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Caller does not have the admin role
+ *         description: Caller is neither admin nor pharmacist_reviewer
  *         content:
  *           application/json:
  *             schema:
