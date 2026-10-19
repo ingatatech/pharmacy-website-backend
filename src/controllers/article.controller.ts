@@ -97,11 +97,10 @@ export async function publish(req: Request<{ id: string }>, res: Response) {
     return res.status(404).json({ error: "Article not found." });
   }
 
-  // An admin may publish at any point in the workflow: the site owner should
-  // never be blocked by a review that only a pharmacist can grant (a solo admin
-  // has no one to approve their article). Everyone else must wait for pharmacist
-  // sign-off first, which is what keeps the review step meaningful.
-  const canSkipReview = req.user?.role === "admin";
+  // Both admin and pharmacist_reviewer may publish at any point in the workflow:
+  // the site owner should never be blocked by a review, and pharmacists are
+  // trusted to review their own work or collaborate directly.
+  const canSkipReview = req.user?.role === "admin" || req.user?.role === "pharmacist_reviewer";
 
   if (!canSkipReview && article.status !== "approved") {
     return res.status(400).json({ error: "Only approved articles can be published." });
