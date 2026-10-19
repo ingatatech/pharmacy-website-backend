@@ -101,8 +101,9 @@ describe("Articles", () => {
   /**
    * The dead end this guards: publishing used to require status "approved",
    * approving was pharmacist-only, and the admin had no way to reach it — so a
-   * solo admin could never publish anything. An admin may now publish straight
-   * from a draft, while a pharmacist still has to sign off first.
+   * solo admin could never publish anything. Both admin and pharmacist_reviewer
+   * may now publish straight from a draft. The review chain still exists for
+   * those who want it, and everyone else stays locked out.
    */
   describe("publishing permissions", () => {
     const createdIds: string[] = [];
@@ -151,17 +152,18 @@ describe("Articles", () => {
       expect(await publicIds()).toContain(id);
     });
 
-    it("refuses a pharmacist who tries to publish before sign-off", async () => {
-      const id = await createDraft(adminToken, "vitest-reviewer-too-early");
+    it("lets a pharmacist publish a draft directly, without waiting for sign-off", async () => {
+      const id = await createDraft(adminToken, "vitest-reviewer-direct-publish");
 
       const response = await request(app)
         .post(`/api/articles/${id}/publish`)
         .set("Authorization", `Bearer ${reviewerToken}`)
         .send({});
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toMatch(/approved/i);
-      expect(await publicIds()).not.toContain(id);
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("published");
+      expect(response.body.publishedAt).toBeTruthy();
+      expect(await publicIds()).toContain(id);
     });
 
     it("lets a pharmacist publish once the article is approved", async () => {

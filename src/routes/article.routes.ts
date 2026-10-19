@@ -400,11 +400,12 @@ router.post(
  *   post:
  *     summary: Publish an article
  *     description: >
- *       Requires admin or pharmacist_reviewer. An admin may publish an article
- *       from any status (draft, pending_review or approved). Any other role must
- *       wait until the status is "approved", i.e. until a pharmacist has signed
- *       off. Sets publishedAt and moves status to "published". Only articles
- *       with status "published" are returned by the public API.
+ *       Requires admin or pharmacist_reviewer. Both roles may publish an article
+ *       from any status (draft, pending_review or approved) — nothing has to be
+ *       approved first, although the submit/approve steps stay available for
+ *       teams that want a sign-off trail. Sets publishedAt and moves status to
+ *       "published". Only articles with status "published" are returned by the
+ *       public API.
  *     tags: [Articles]
  *     security:
  *       - bearerAuth: []
@@ -423,7 +424,7 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/Article'
  *       400:
- *         description: Caller is not an admin and the article is not in "approved" status
+ *         description: The article is not in "approved" status and the caller has no permission to bypass review
  *         content:
  *           application/json:
  *             schema:
