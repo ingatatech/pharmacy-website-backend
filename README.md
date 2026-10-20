@@ -31,10 +31,15 @@ pharmacy-website-backend/
 │   ├── seed-admin.ts     # one-time admin user seed script
 │   └── index.ts          # entry point: connects the database, then app.listen()
 ├── tests/                # Vitest + Supertest integration tests (run against a separate test database)
-├── vitest.config.ts
+├── scripts/
+│   └── verify-schema.ts  # `npm run db:verify` — compares entities against the live schema
+├── vitest.config.mts
 ├── docker-compose.yml
+├── Dockerfile
 └── .github/workflows/ci.yml
 ```
+
+Two TypeScript configs are used on purpose: `tsconfig.json` (module/moduleResolution `node16`) is what `npm run typecheck` reads, and `tsconfig.build.json` extends it with a `rootDir` so `npm run build` emits only `src/` into `dist/`. `vitest.config.mts` carries the `.mts` extension because it imports the ESM-only `vitest/config` package and no longer resolves as CommonJS.
 
 ## Data model
 
@@ -65,11 +70,11 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | Resource | Public routes | Admin-only routes |
 |---|---|---|
 | `/auth` | `POST /register` (rate limited, always creates a `customer` account), `POST /login` | `GET /me` (any authenticated user) |
-| `/services` | `GET /`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
-| `/products` | `GET /`, `GET /search?q=`, `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/services` | `GET /`, `GET /:slug` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` — the admin list is also readable by a `pharmacist_reviewer` |
+| `/products` | `GET /`, `GET /search?q=`, `GET /:slug` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` — the admin list is also readable by a `pharmacist_reviewer` |
 | `/categories` | `GET /` (`?type=service\|product`), `GET /:slug` | `POST /`, `PATCH /:id`, `DELETE /:id` |
-| `/faqs` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
-| `/locations` | `GET /` | `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/faqs` | `GET /` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/locations` | `GET /` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/articles` | `GET /`, `GET /:slug` (published only) | `GET /admin/all`, `POST /`, `PATCH /:id`, plus the workflow actions below |
 | `/contact` | `POST /` (rate limited), `GET /mine`\* | `GET /admin/all`, `PATCH /admin/:id` |
 | `/prescription-refill` | `POST /` (rate limited), `GET /mine`\* | `GET /admin/all`, `PATCH /admin/:id` |
@@ -77,8 +82,10 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/audit-logs` | — | `GET /` |
 | `/uploads` | — | `POST /` (multipart/form-data, field `image`) |
 | `/admin/users` | — | `GET /`, `POST /`, `PATCH /:id`, `DELETE /:id` — manage any account's role (admin/pharmacist_reviewer/customer) |
+| `/testimonials` | `GET /` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` |
+| `/team` | `GET /` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` |
 
-`GET /products`, `/services`, `/articles`, `/contact/admin/all` and `/prescription-refill/admin/all` accept optional `?page=`/`?limit=` (default limit 50, max 200) — omit both to get the full list as before. The total match count is returned in the `X-Total-Count` response header either way.
+`GET /products`, `/services`, `/articles`, `/contact/admin/all`, `/prescription-refill/admin/all` and `/audit-logs` accept optional `?page=`/`?limit=` (default limit 50, max 200) — omit both to get the full list as before. The total match count is returned in the `X-Total-Count` response header either way.
 
 \* `GET /contact/mine` and `GET /prescription-refill/mine` require authentication but not any particular role — any logged-in account (including `customer`) can see their own past submissions. `POST /contact` and `POST /prescription-refill` still work without an account exactly as before; if the caller happens to send a valid token, the submission is additionally linked to that account (via a nullable `userId`) so it shows up in `/mine` — this never gates or changes the anonymous flow.
 
@@ -94,6 +101,7 @@ draft --submit-for-review--> pending_review --approve--> approved --publish--> p
 
 - `submit-for-review` and `publish` require the **admin** role.
 - `approve` and `reject` require the **pharmacist_reviewer** role — by design, an admin alone cannot approve or reject an article.
+- Publishing is also allowed straight from any earlier status by an admin or a pharmacist (the `canSkipReview` path), so a draft can go live without a full review round when that's the right call.
 
 ## Authentication & authorization
 
@@ -192,6 +200,8 @@ Uploaded images (`POST /api/uploads`) are written to `./uploads` and served at `
 
 Tests are **integration/API tests**: Vitest drives Supertest, which sends real HTTP requests into the Express app (`src/app.ts`) and asserts on the actual response — status code and body — going all the way through validation, auth, the service layer, and a real Postgres database via TypeORM. No mocking of Express or the database.
 
+As of today the suite is **13 test files / 122 tests**, covering authentication, the role model and permission rules, the article workflow, the public read endpoints, CORS behaviour, the schema checker and the Swagger contract. `tests/role-constraint.test.ts` in particular asserts that `CHK_user_role` accepts every role the application actually uses; `tests/cors.test.ts` and `tests/swagger.test.ts` pin the two pieces of behaviour that are easiest to regress silently.
+
 This is a deliberate choice over the two alternatives:
 
 - **Unit tests** exercise one function in isolation (e.g. does `parsePagination` compute the right `skip`/`take`?), with everything around it mocked. Fast, but they don't prove the pieces work together.
@@ -219,7 +229,7 @@ npm run test:watch   # re-runs affected tests on file changes, for local develop
 
 `vitest.config.ts` loads `.env.test` and, via `globalSetup` (`tests/global-setup.ts`), runs pending TypeORM migrations against it automatically before any test runs — so `npm test` alone keeps the test database's schema current, no manual migration step needed. As a safety net, that setup script refuses to run if `DATABASE_URL` doesn't contain the word "test", so a misconfigured `.env.test` can't accidentally wipe your real database.
 
-It shells out to `npm run db:migrate` in a child process rather than running the migrations in-process. Vitest transforms test files as ES modules, and the migrations use the CommonJS-style `export default` DataSource convention the TypeORM CLI requires; keeping that in a separate `ts-node` process avoids the two loaders meeting in the same runtime. For the same reason `src/db/data-source.ts` (used by the app and the tests) never lists migration classes, and only `src/db/migrate-data-source.ts` does.
+It shells out to `npm run db:migrate` in a child process rather than running the migrations in-process. Vitest transforms test files as ES modules, and the migrations use the CommonJS-style `export default` DataSource convention the TypeORM CLI requires; keeping that in a separate `ts-node` process avoids the two loaders meeting in the same runtime. For the same reason `src/db/data-source.ts` (used by the app and the tests) never lists migration classes, and only `src/db/migrate-data-source.ts` does. The config file itself is `vitest.config.mts`, not `.ts` — it imports the ESM-only `vitest/config` package, which cannot be `require`d under the project's `node16` module resolution.
 
 `tests/setup.ts` seeds two known accounts (one `admin`, one `pharmacist_reviewer`) before each test file via `upsert`, so re-running the suite never fails on "already exists". Tests that create their own data (e.g. a category or a user) clean it up in `afterEach`/`afterAll`.
 
@@ -231,7 +241,8 @@ It shells out to `npm run db:migrate` in a child process rather than running the
 |---|---|
 | `NODE_ENV` | `production`/`development` |
 | `PORT` | Backend HTTP port (default `4000`) |
-| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://user:pass@host:5432/db?schema=public` — read by `src/db/data-source.ts` at runtime and by `src/db/migrate-data-source.ts` for the migration CLI |
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://user:pass@host:5432/db?schema=public` — read by `src/db/data-source.ts` at runtime and by `src/db/migrate-data-source.ts` for the migration CLI. |
+| `DB_LOGGING` | Set to `true` to log every SQL statement TypeORM runs (off by default — very noisy). |
 | `JWT_SECRET` | Signing secret for auth tokens — must be set, no default |
 | `FRONTEND_URL` | Comma-separated allowlist of browser origins the API's CORS policy trusts (see `src/config/cors.ts`), e.g. `https://your-pharmacy-frontend.vercel.app`. Include the scheme and no trailing slash; a `https://*.domain` entry allows any subdomain. In development `http://localhost:3000` is allowed regardless; in production only this list is trusted, so set it explicitly before deploying. |
 | `ADMIN_PASSWORD` | Used only by `npm run seed:admin`. If unset, the script prompts for the password interactively (input hidden). Never pass it on the command line. |
