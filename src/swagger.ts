@@ -36,7 +36,7 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
     { name: "SiteSettings", description: "Global site content and branding" },
     { name: "Contact", description: "Public contact form and its handling" },
     { name: "Refill", description: "Public prescription refill requests and their handling" },
-    { name: "Uploads", description: "Image upload used by the content forms" },
+    { name: "Uploads", description: "Image upload to Cloudinary, used by the content forms" },
     { name: "Pharmacist", description: "Read-only views of the pharmacist workspace" },
   ],
   paths: {

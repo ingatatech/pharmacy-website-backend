@@ -80,7 +80,7 @@ Base URL: `http://localhost:4000/api`. Full interactive documentation (with a "t
 | `/prescription-refill` | `POST /` (rate limited), `GET /mine`\* | `GET /admin/all`, `PATCH /admin/:id` |
 | `/site-settings` | `GET /` | `PATCH /` |
 | `/audit-logs` | — | `GET /` |
-| `/uploads` | — | `POST /` (multipart/form-data, field `image`) |
+| `/uploads` | — | `POST /` (multipart/form-data, field `image`) — stores on Cloudinary, returns its URL |
 | `/admin/users` | — | `GET /`, `POST /`, `PATCH /:id`, `DELETE /:id` — manage any account's role (admin/pharmacist_reviewer/customer) |
 | `/testimonials` | `GET /` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` |
 | `/team` | `GET /` | `GET /admin/all`, `POST /`, `PATCH /:id`, `DELETE /:id` |
@@ -136,7 +136,7 @@ docker compose up --build
 This starts two services:
 
 - `postgres` — PostgreSQL 16 on host port `5435`, data persisted in the `postgres_data` volume
-- `backend` — Express API at http://localhost:4000 (docs at `/api-docs`), uploaded images persisted in the `uploads_data` volume
+- `backend` — Express API at http://localhost:4000 (docs at `/api-docs`). Uploaded images are stored on Cloudinary, not on the container, so nothing needs a volume here.
 
 To also run the frontend, clone [pharmacy-website-frontend](https://github.com/ingatatech/pharmacy-website-frontend) and run it separately (its own `docker compose up --build` or `npm run dev`), pointing `NEXT_PUBLIC_API_URL` at this backend.
 
@@ -194,7 +194,7 @@ Then edit the generated file if needed, apply it with `npm run db:migrate`, and 
 
 Migrations run through `ts-node` in development. In the Docker image they run from the compiled output instead (`typeorm migration:run -d dist/db/migrate-data-source.js`), because `ts-node` is a devDependency that the runtime image deliberately omits.
 
-Uploaded images (`POST /api/uploads`) are written to `./uploads` and served at `/uploads/<filename>`; the directory is created automatically and is gitignored.
+Uploaded images (`POST /api/uploads`) are streamed to **Cloudinary** and the endpoint returns the public `https://res.cloudinary.com/...` URL, which is what gets stored in `imageUrl`/`photoUrl`/`featuredImageUrl`. Nothing is written to the server's disk, so uploads survive redeploys and work across multiple instances. This requires `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` to be set (see `.env.example`); until they are, the endpoint returns a clear 500 explaining what is missing.
 
 ## Automated testing
 
@@ -247,5 +247,8 @@ It shells out to `npm run db:migrate` in a child process rather than running the
 | `FRONTEND_URL` | Comma-separated allowlist of browser origins the API's CORS policy trusts (see `src/config/cors.ts`), e.g. `https://your-pharmacy-frontend.vercel.app`. Include the scheme and no trailing slash; a `https://*.domain` entry allows any subdomain. In development `http://localhost:3000` is allowed regardless; in production only this list is trusted, so set it explicitly before deploying. |
 | `ADMIN_PASSWORD` | Used only by `npm run seed:admin`. If unset, the script prompts for the password interactively (input hidden). Never pass it on the command line. |
 | `ENABLE_DOCS` | Set to `true` to serve the Swagger UI at `/api-docs` when `NODE_ENV=production`. Outside production the docs are always served. |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name, from the console's "Product Environment → API Keys". Required for image uploads. |
+| `CLOUDINARY_API_KEY` | Cloudinary API key, from the same page. Required for image uploads. |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret, from the same page. **A real secret** — server-side only, never exposed to the browser. Required for image uploads. |
 
 **`.env.test`** (see `.env.test.example`) — same shape as `.env`, but `DATABASE_URL` must point at a separate database (its name must contain `test`). Used only by `npm test`/`npm run test:watch`, never by `npm run dev` or the deployed app.

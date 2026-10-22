@@ -26,14 +26,16 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ingata_pharmacy?schema=public
       # Placeholder only — replace with a long random string for any real deployment.
       JWT_SECRET: change-this-in-production-use-a-long-random-string
+      # Image uploads go to Cloudinary, so the container needs no uploads volume.
+      # Set these to real values (or point at your .env) to enable uploads.
+      CLOUDINARY_CLOUD_NAME: ""
+      CLOUDINARY_API_KEY: ""
+      CLOUDINARY_API_SECRET: ""
     ports:
       - "4000:4000"
-    volumes:
-      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
-  uploads_data:

@@ -10,6 +10,8 @@ coverage/
 .env.*
 !.env.example
 !.env.test.example
+# Legacy: images uploaded before the move to Cloudinary. No longer written to,
+# but kept ignore'd so any rows still pointing at /uploads/... are not disturbed.
 uploads/
 .vscode/
 .idea/
