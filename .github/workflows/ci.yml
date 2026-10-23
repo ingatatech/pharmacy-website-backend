@@ -34,18 +34,21 @@ jobs:
           --health-retries 10
 
     env:
-      # No .env.test file exists in CI (it's gitignored) — these are read
+      # No .env.test file exists in CI (it's gitignored) �?" these are read
       # directly from process.env instead, which tests/global-setup.ts and
       # src/db/data-source.ts both already fall back to.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ingata_pharmacy_test?schema=public
       JWT_SECRET: ci-test-only-jwt-secret-not-a-real-secret
+      CLOUDINARY_CLOUD_NAME: ci-dummy
+      CLOUDINARY_API_KEY: ci-dummy
+      CLOUDINARY_API_SECRET: ci-dummy
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: package-lock.json
 
