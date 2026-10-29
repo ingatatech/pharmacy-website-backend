@@ -32,6 +32,7 @@ const swaggerDefinition: swaggerJsdoc.SwaggerDefinition = {
     { name: "Testimonials", description: "Customer testimonials" },
     { name: "Locations", description: "Branches and opening hours" },
     { name: "Team", description: "Staff members listed on the public site" },
+    { name: "Schedule", description: "Weekly pharmacist roster by branch" },
     { name: "Articles", description: "Blog posts, with a pharmacist review workflow" },
     { name: "SiteSettings", description: "Global site content and branding" },
     { name: "Contact", description: "Public contact form and its handling" },
