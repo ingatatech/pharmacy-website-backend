@@ -4,8 +4,10 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { PharmacistShift } from "./pharmacist-shift.entity";
 import { PharmacyLocation } from "./pharmacy-location.entity";
 
 @Entity("team_member")
@@ -50,4 +52,7 @@ export class TeamMember {
   })
   @JoinColumn({ name: "locationId", foreignKeyConstraintName: "team_member_locationId_fkey" })
   location: PharmacyLocation | null;
+
+  @OneToMany(() => PharmacistShift, (shift) => shift.teamMember)
+  shifts: PharmacistShift[];
 }

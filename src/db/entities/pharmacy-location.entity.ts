@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { ContactInquiry } from "./contact-inquiry.entity";
+import { PharmacistShift } from "./pharmacist-shift.entity";
 import { RefillRequest } from "./refill-request.entity";
 import { TeamMember } from "./team-member.entity";
 import { User } from "./user.entity";
@@ -53,6 +54,9 @@ export class PharmacyLocation {
 
   @OneToMany(() => TeamMember, (member) => member.location)
   team: TeamMember[];
+
+  @OneToMany(() => PharmacistShift, (shift) => shift.location)
+  pharmacistShifts: PharmacistShift[];
 
   // Branches that a pharmacist_reviewer account is responsible for.
   @OneToMany(() => User, (user) => user.location)

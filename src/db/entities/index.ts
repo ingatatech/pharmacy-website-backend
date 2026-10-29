@@ -3,6 +3,7 @@ export { AuditLog } from "./audit-log.entity";
 export { Category } from "./category.entity";
 export { ContactInquiry } from "./contact-inquiry.entity";
 export { Faq } from "./faq.entity";
+export { PharmacistShift } from "./pharmacist-shift.entity";
 export { PharmacyLocation } from "./pharmacy-location.entity";
 export { Product } from "./product.entity";
 export { RefillRequest } from "./refill-request.entity";
@@ -17,6 +18,7 @@ import { AuditLog } from "./audit-log.entity";
 import { Category } from "./category.entity";
 import { ContactInquiry } from "./contact-inquiry.entity";
 import { Faq } from "./faq.entity";
+import { PharmacistShift } from "./pharmacist-shift.entity";
 import { PharmacyLocation } from "./pharmacy-location.entity";
 import { Product } from "./product.entity";
 import { RefillRequest } from "./refill-request.entity";
@@ -33,6 +35,7 @@ export const entities = [
   Category,
   ContactInquiry,
   Faq,
+  PharmacistShift,
   PharmacyLocation,
   Product,
   RefillRequest,

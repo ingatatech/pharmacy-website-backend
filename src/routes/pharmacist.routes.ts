@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as pharmacistController from "../controllers/pharmacist.controller";
+import * as shiftController from "../controllers/pharmacist-shift.controller";
 import { authenticate, requireRole } from "../middleware/auth.middleware";
 import { validateBody, validateParams } from "../middleware/validate.middleware";
 import { updateOwnBranchSchema } from "../validators/location.validator";
@@ -93,6 +94,27 @@ router.patch("/branch", validateBody(updateOwnBranchSchema), pharmacistControlle
  *         description: Caller is not a pharmacist_reviewer
  */
 router.get("/branch/team", pharmacistController.getBranchTeam);
+
+/**
+ * @swagger
+ * /api/pharmacist/schedule:
+ *   get:
+ *     summary: Weekly roster for the signed-in pharmacist's branch
+ *     description: >
+ *       Scoped to the caller's own branch through their account, never a
+ *       parameter. Returns { branch: null, shifts: [] } when unassigned.
+ *     tags: [Pharmacist]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The branch and its active shifts
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Caller is not a pharmacist_reviewer
+ */
+router.get("/schedule", shiftController.listForOwnBranch);
 
 /**
  * @swagger
